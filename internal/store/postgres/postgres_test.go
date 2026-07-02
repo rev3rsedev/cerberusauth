@@ -14,10 +14,10 @@ import (
 	"github.com/rev3rsedev/cerberusauth/internal/store/postgres"
 )
 
-// TestStoreIntegration exercises the real SQL against a live PostgreSQL —
+// TestStoreIntegration exercises the real SQL against a live PostgreSQL:
 // the semantics the storetest fake promises to mirror. Skipped unless
 // CERBERUS_TEST_DATABASE_URL is set (CI sets it; locally, point it at a
-// DISPOSABLE database — the test truncates every table).
+// DISPOSABLE database, because the test truncates every table).
 func TestStoreIntegration(t *testing.T) {
 	url := os.Getenv("CERBERUS_TEST_DATABASE_URL")
 	if url == "" {

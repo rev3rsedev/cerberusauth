@@ -11,7 +11,7 @@ import (
 
 // Login rate limit: each IP gets a bucket of loginBurst attempts that
 // refills one attempt per loginRefillEvery. Steady state is 6 attempts a
-// minute — generous for a human retyping a password, useless for volume
+// minute: generous for a human retyping a password, useless for volume
 // guessing (argon2 already makes each attempt slow; this caps how many an
 // IP gets at all). Limits are per process and per IP; deployments behind a
 // proxy that mixes clients into one IP should limit at the proxy instead
@@ -78,8 +78,8 @@ func (l *ipLimiter) allow(key string) (ok bool, retryAfter time.Duration) {
 	return false, time.Duration((1 - b.tokens) * float64(l.refillEvery))
 }
 
-// sweep drops buckets that have been idle long enough to be full again —
-// indistinguishable from fresh ones. Caller holds l.mu.
+// sweep drops buckets that have been idle long enough to be full again,
+// which makes them indistinguishable from fresh ones. Caller holds l.mu.
 func (l *ipLimiter) sweep(now time.Time) {
 	if now.Sub(l.lastSweep) < limiterSweepEvery {
 		return
@@ -114,7 +114,7 @@ func (s *Server) withLoginRateLimit(next http.HandlerFunc) http.HandlerFunc {
 // clientIP keys the limiter by the TCP peer address. Deliberately not
 // X-Forwarded-For: an unauthenticated attacker can put anything there and
 // hop buckets freely. Behind a reverse proxy every client shares the
-// proxy's IP — rate-limit at the proxy in that topology.
+// proxy's IP; rate-limit at the proxy in that topology.
 func clientIP(r *http.Request) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {

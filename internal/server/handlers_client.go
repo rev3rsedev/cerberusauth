@@ -19,7 +19,7 @@ type clientRequest struct {
 	Timestamp  int64  `json:"timestamp"` // unix seconds, client clock
 }
 
-// handleClientCall adapts Redeem and Validate — same request shape, same
+// handleClientCall adapts Redeem and Validate: same request shape, same
 // envelope, different service call.
 func (s *Server) handleClientCall(call func(context.Context, service.ValidationRequest) (service.SignedResponse, error)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -67,9 +67,9 @@ func (s *Server) handleClientCall(call func(context.Context, service.ValidationR
 	}
 }
 
-// handlePubkey serves an app's verification key. Convenience for tooling —
-// production clients should pin the key at build time; fetching it over the
-// same channel you are trying to distrust defeats the purpose.
+// handlePubkey serves an app's verification key. Convenience for tooling;
+// production clients should pin the key at build time, since fetching it over
+// the same channel you are trying to distrust defeats the purpose.
 func (s *Server) handlePubkey(w http.ResponseWriter, r *http.Request) {
 	appID, err := uuid.Parse(r.PathValue("app_id"))
 	if err != nil {

@@ -59,7 +59,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, `cerberusd — CerberusAuth server
+	fmt.Fprintln(os.Stderr, `cerberusd - CerberusAuth server
 
 Commands:
   serve         run the HTTP server (default)
@@ -72,7 +72,7 @@ Configuration is environment-only; see .env.example.`)
 
 // guardMasterKey gates every command that touches the master key: the key
 // must exist, and the published dev key from docker-compose.yml only passes
-// in explicit dev mode — and even then with a loud warning.
+// in explicit dev mode, and even then with a loud warning.
 func guardMasterKey(cfg config.Config, log *slog.Logger) error {
 	if err := cfg.RequireMasterKey(); err != nil {
 		return err
@@ -81,9 +81,9 @@ func guardMasterKey(cfg config.Config, log *slog.Logger) error {
 		return nil
 	}
 	if !cfg.DevMode {
-		return errors.New("CERBERUS_MASTER_KEY is the published dev key from docker-compose.yml — generate a real one with `cerberusd genkey`, or set CERBERUS_DEV_MODE=true if this is a disposable sandbox")
+		return errors.New("CERBERUS_MASTER_KEY is the published dev key from docker-compose.yml; generate a real one with `cerberusd genkey`, or set CERBERUS_DEV_MODE=true if this is a disposable sandbox")
 	}
-	log.Warn("running with the PUBLISHED dev master key — anyone can decrypt this database's signing keys; never expose this instance")
+	log.Warn("running with the PUBLISHED dev master key: anyone can decrypt this database's signing keys; never expose this instance")
 	return nil
 }
 

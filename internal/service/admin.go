@@ -55,7 +55,7 @@ func (s *Service) ListApplications(ctx context.Context) ([]store.Application, er
 	return s.store.ListApplications(ctx)
 }
 
-// IssuedLicense pairs a stored license with its plaintext key — the only
+// IssuedLicense pairs a stored license with its plaintext key, the only
 // moment the plaintext exists server-side. It is returned once and never
 // persisted.
 type IssuedLicense struct {
@@ -65,7 +65,7 @@ type IssuedLicense struct {
 
 // IssueLicenses batch-creates licenses for an app. Expiry is either
 // relative (durationSeconds, clock starts at redemption) or absolute
-// (expiresAt) — not both.
+// (expiresAt), not both.
 func (s *Service) IssueLicenses(ctx context.Context, appID uuid.UUID, count int, tier string, durationSeconds *int64, expiresAt *time.Time) ([]IssuedLicense, error) {
 	if _, err := s.GetApplication(ctx, appID); err != nil {
 		return nil, err
@@ -266,7 +266,7 @@ func (s *Service) Login(ctx context.Context, email, password string) (string, ti
 }
 
 // Logout revokes the presented bearer token. Revoking a token that is
-// already gone succeeds — the caller's goal (token no longer works) is met
+// already gone succeeds: the caller's goal (token no longer works) is met
 // either way.
 func (s *Service) Logout(ctx context.Context, token string) error {
 	return s.store.DeleteAdminToken(ctx, auth.HashToken(token))

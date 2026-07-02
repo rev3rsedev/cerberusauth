@@ -17,7 +17,7 @@ func (s *Server) writeJSON(w http.ResponseWriter, code int, v any) {
 }
 
 // writeError is the unsigned error shape: {"error": "..."}. Clients must
-// never treat these as license verdicts — verdicts are signed payloads.
+// never treat these as license verdicts; verdicts are signed payloads.
 func (s *Server) writeError(w http.ResponseWriter, code int, msg string) {
 	s.writeJSON(w, code, map[string]string{"error": msg})
 }

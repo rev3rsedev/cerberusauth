@@ -73,7 +73,7 @@ func (e *env) req(key, hwid string) service.ValidationRequest {
 }
 
 // verify checks the envelope signature against the app key and returns the
-// parsed payload — the exact procedure a real client must follow.
+// parsed payload, the exact procedure a real client must follow.
 func (e *env) verify(t *testing.T, resp service.SignedResponse) service.Payload {
 	t.Helper()
 	if resp.Alg != "ed25519" {
@@ -204,7 +204,7 @@ func TestValidateBannedIsSignedFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The signature must verify — a denial is as authentic as an approval.
+	// The signature must verify: a denial is as authentic as an approval.
 	p := e.verify(t, resp)
 	if p.Valid || p.Reason != service.ReasonBanned {
 		t.Fatalf("want banned, got %+v", p)

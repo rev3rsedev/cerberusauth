@@ -2,7 +2,7 @@
 //
 // Keys are 25 characters drawn from the Crockford base32 alphabet (no
 // I/L/O/U to avoid transcription errors), grouped for humans as
-// XXXXX-XXXXX-XXXXX-XXXXX-XXXXX. That is 125 bits from crypto/rand —
+// XXXXX-XXXXX-XXXXX-XXXXX-XXXXX. That is 125 bits from crypto/rand:
 // unguessable, so the database stores only an unsalted SHA-256 of the
 // canonical form and the plaintext is shown once, at issuance.
 package license
@@ -66,7 +66,7 @@ func Canonicalize(input string) (string, error) {
 	return cleaned, nil
 }
 
-// Hash returns the SHA-256 of a canonical key — the only form stored.
+// Hash returns the SHA-256 of a canonical key, the only form stored.
 func Hash(canonical string) []byte {
 	sum := sha256.Sum256([]byte(canonical))
 	return sum[:]
@@ -74,7 +74,7 @@ func Hash(canonical string) []byte {
 
 // Hint returns the last group of a formatted key (e.g. "BC6DF"), stored in
 // plaintext so admins can tell licenses apart in listings. Five of 25
-// characters — not enough to reconstruct or meaningfully brute the rest.
+// characters is not enough to reconstruct or meaningfully brute the rest.
 func Hint(formatted string) string {
 	if i := strings.LastIndexByte(formatted, '-'); i >= 0 && i+1 < len(formatted) {
 		return formatted[i+1:]

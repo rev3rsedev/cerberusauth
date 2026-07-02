@@ -12,7 +12,7 @@ import (
 	"golang.org/x/crypto/argon2"
 )
 
-// argon2id parameters — the OWASP-recommended baseline (2024): 19 MiB
+// argon2id parameters, per the OWASP baseline (2024): 19 MiB
 // memory, 2 iterations, 1 lane. Parameters are encoded into each hash, so
 // raising them later only affects new hashes and old ones keep verifying.
 const (

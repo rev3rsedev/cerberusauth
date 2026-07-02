@@ -20,7 +20,7 @@ description of a real weakness is welcome too.
 ## What to expect
 
 This is a small open-source project, not a security team with a pager.
-Honest commitments:
+Commitments:
 
 - **Acknowledgment within 7 days.**
 - **Assessment and a fix plan (or a reasoned dispute) within 30 days.**
@@ -30,7 +30,7 @@ Honest commitments:
 
 ## Scope
 
-**In scope** — the server and protocol:
+**In scope**, the server and protocol:
 
 - `cerberusd` and everything under `internal/` and `cmd/`: signature
   forgery or bypass, authentication/authorization breaks in the admin API,
@@ -42,17 +42,17 @@ Honest commitments:
   (`examples/client-verify`): anything that makes verify-then-parse
   accept a forged or tampered payload.
 
-**Out of scope** — documented non-goals (see the threat model in
+**Out of scope**, per the documented non-goals (see the threat model in
 [README.md](README.md) and [ARCHITECTURE.md](ARCHITECTURE.md)):
 
 - Patched or modified client binaries skipping their own license checks.
-  No licensing server can prevent that; ours documents it.
+  No licensing server can prevent that.
 - Denial of service by volume in v0.1. Admin login is rate-limited;
   everything else is documented as "front with a reverse proxy".
 - Deployments running the published dev master key with
-  `CERBERUS_DEV_MODE=true`. The tripwire exists precisely so this cannot
-  happen silently; a sandbox that opts in is out of scope by definition.
-- Vulnerabilities purely in dependencies — report upstream. If CerberusAuth
+  `CERBERUS_DEV_MODE=true`. The tripwire exists so this cannot happen
+  silently; a sandbox that opts in is out of scope.
+- Vulnerabilities purely in dependencies: report upstream. If CerberusAuth
   uses the dependency in an exploitable way, that usage is in scope.
 
 ## Supported versions

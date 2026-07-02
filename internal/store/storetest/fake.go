@@ -1,6 +1,6 @@
 // Package storetest provides an in-memory store.Store for unit tests, so
 // the service and HTTP layers are testable without PostgreSQL. Conditional
-// mutations (RedeemLicense, BindHWID) mirror the SQL semantics exactly —
+// mutations (RedeemLicense, BindHWID) mirror the SQL semantics exactly;
 // that is the part worth faking faithfully.
 package storetest
 

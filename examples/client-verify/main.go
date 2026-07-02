@@ -1,5 +1,5 @@
 // client-verify is a reference client for the CerberusAuth validation
-// protocol — the exact sequence every real client must implement:
+// protocol, the exact sequence every real client must implement:
 //
 //  1. generate a random nonce, stamp the current time
 //  2. POST /v1/client/validate (or /redeem with -redeem)
@@ -112,7 +112,7 @@ func main() {
 		fatal("decode envelope (HTTP %d): %v", resp.StatusCode, err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		// Unsigned transport error — NOT a license verdict. Fail closed,
+		// Unsigned transport error, NOT a license verdict. Fail closed,
 		// retry later; do not unlock anything.
 		fatal("transport error: HTTP %d", resp.StatusCode)
 	}
@@ -127,7 +127,7 @@ func main() {
 		fatal("signature not base64: %v", err)
 	}
 	if !ed25519.Verify(ed25519.PublicKey(pub), rawPayload, sig) {
-		fatal("SIGNATURE INVALID — response is forged, tampered, or signed by a different key. Treat as invalid license.")
+		fatal("SIGNATURE INVALID: response is forged, tampered, or signed by a different key. Treat as invalid license.")
 	}
 	var p payload
 	if err := json.Unmarshal(rawPayload, &p); err != nil {
@@ -136,7 +136,7 @@ func main() {
 
 	// Step 5: the echoed nonce must be ours, or this is a replayed response.
 	if p.Nonce != nonce {
-		fatal("NONCE MISMATCH — response replayed or answered for a different request. Treat as invalid license.")
+		fatal("NONCE MISMATCH: response replayed or answered for a different request. Treat as invalid license.")
 	}
 
 	// Step 6: the verdict is now trustworthy.

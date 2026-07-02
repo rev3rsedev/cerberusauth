@@ -152,7 +152,7 @@ func TestNewMasterKeyParses(t *testing.T) {
 }
 
 // TestDeriveKeysKnownAnswer pins the exact derivation. If this test breaks,
-// the change orphans every private key and email hash in existing databases —
+// the change orphans every private key and email hash in existing databases;
 // that must be a deliberate, versioned decision, never a refactoring accident.
 func TestDeriveKeysKnownAnswer(t *testing.T) {
 	encKey, emailPepper, err := DeriveKeys(testMaster(t))
@@ -182,7 +182,7 @@ func TestDeriveKeysSubkeysIndependent(t *testing.T) {
 		t.Fatal("enc key and email pepper are identical")
 	}
 	if bytes.Equal(encKey, master) || bytes.Equal(emailPepper, master) {
-		t.Fatal("a subkey equals the master key — derivation is not happening")
+		t.Fatal("a subkey equals the master key; derivation is not happening")
 	}
 }
 

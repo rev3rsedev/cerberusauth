@@ -53,8 +53,8 @@ func New(st store.Store, opts Options) *Service {
 		tokenTTL:  opts.TokenTTL,
 	}
 	// An absent or malformed master key leaves the derived keys nil, and
-	// key-touching operations fail at call time — same laziness as before
-	// the HKDF split. config.Load already rejects malformed keys upfront.
+	// key-touching operations fail at call time. config.Load already
+	// rejects malformed keys upfront.
 	if encKey, emailPepper, err := signing.DeriveKeys(opts.MasterKey); err == nil {
 		s.encKey, s.emailPepper = encKey, emailPepper
 	}
@@ -86,7 +86,7 @@ func HashHWID(hwid string) []byte {
 }
 
 // Validate answers "is this license good for this device, right now" with a
-// signed verdict. Every license-related outcome — including failures — is
+// signed verdict. Every license-related outcome, including failures, is
 // signed, so a network attacker can forge neither approval nor denial.
 func (s *Service) Validate(ctx context.Context, req ValidationRequest) (SignedResponse, error) {
 	app, p, lic, early, err := s.resolve(ctx, req)

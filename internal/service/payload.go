@@ -10,7 +10,7 @@ import (
 	"github.com/rev3rsedev/cerberusauth/internal/signing"
 )
 
-// Failure reasons carried in signed payloads. Stable strings — clients
+// Failure reasons carried in signed payloads. Stable strings: clients
 // switch on them, so changing one is a breaking API change.
 const (
 	ReasonInvalidKey     = "invalid_key"
@@ -23,7 +23,7 @@ const (
 
 // Payload is the unit that gets signed. The exact bytes produced by
 // json.Marshal on this struct are signed and transported verbatim
-// (base64) — clients verify those bytes, then parse them. Field order is
+// (base64); clients verify those bytes, then parse them. Field order is
 // fixed by the struct; there is no canonicalization step.
 type Payload struct {
 	V     int  `json:"v"`

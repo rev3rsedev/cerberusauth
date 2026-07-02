@@ -4,7 +4,7 @@
 // used directly; DeriveKeys expands it into independent subkeys per purpose.
 //
 // The signed unit is always an exact byte sequence. Callers transport those
-// bytes verbatim (base64) and clients verify before parsing — there is no
+// bytes verbatim (base64) and clients verify before parsing; there is no
 // canonicalization step anywhere.
 package signing
 
@@ -75,7 +75,7 @@ func ParseMasterKey(s string) ([]byte, error) {
 
 // DeriveKeys expands the master key into its two subkeys via HKDF-SHA256:
 // the AES-256 key for private keys at rest and the HMAC pepper for email
-// hashing. The master key itself must never be used as a cipher or MAC key —
+// hashing. The master key itself must never be used as a cipher or MAC key;
 // deriving per-purpose keys keeps the primitives independent. The info
 // strings are versioned so a future rotation scheme can add "-v2" without
 // ambiguity; changing them (or the nil salt) changes every derived key and

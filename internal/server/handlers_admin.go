@@ -172,7 +172,7 @@ func (s *Server) handleIssueLicenses(w http.ResponseWriter, r *http.Request) {
 
 	type issuedJSON struct {
 		ID              string     `json:"id"`
-		Key             string     `json:"key"` // plaintext — returned once, never again
+		Key             string     `json:"key"` // plaintext; returned once, never again
 		Tier            string     `json:"tier"`
 		DurationSeconds *int64     `json:"duration_seconds,omitempty"`
 		ExpiresAt       *time.Time `json:"expires_at,omitempty"`

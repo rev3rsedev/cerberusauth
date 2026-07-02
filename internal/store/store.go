@@ -100,6 +100,6 @@ type Store interface {
 	GetAdminTokenByHash(ctx context.Context, tokenHash []byte) (AdminToken, error)
 
 	// DeleteAdminToken revokes a token by its hash. Deleting a token that
-	// does not exist is not an error — revocation is idempotent.
+	// does not exist is not an error; revocation is idempotent.
 	DeleteAdminToken(ctx context.Context, tokenHash []byte) error
 }

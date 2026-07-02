@@ -164,7 +164,7 @@ func (s *Store) RedeemLicense(ctx context.Context, id uuid.UUID, hwidHash []byte
 	return tag.RowsAffected() == 1, nil
 }
 
-// BindHWID wins only if no device is bound yet — same single-winner pattern.
+// BindHWID wins only if no device is bound yet; same single-winner pattern.
 func (s *Store) BindHWID(ctx context.Context, id uuid.UUID, hwidHash []byte) (bool, error) {
 	tag, err := s.pool.Exec(ctx, `
 		UPDATE licenses SET hwid_hash = $2, updated_at = now()
