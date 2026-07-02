@@ -370,6 +370,16 @@ func (s *Store) GetAdminTokenByHash(ctx context.Context, tokenHash []byte) (stor
 	return t, nil
 }
 
+// DeleteExpiredAdminTokens is the cleanup job's workhorse; the partial
+// index admin_tokens_expires_at_idx from 0001_init.sql keeps it cheap.
+func (s *Store) DeleteExpiredAdminTokens(ctx context.Context, before time.Time) (int64, error) {
+	tag, err := s.pool.Exec(ctx, "DELETE FROM admin_tokens WHERE expires_at < $1", before)
+	if err != nil {
+		return 0, fmt.Errorf("postgres: delete expired tokens: %w", err)
+	}
+	return tag.RowsAffected(), nil
+}
+
 // --- audit log ---
 
 func (s *Store) AppendAudit(ctx context.Context, e store.AuditEntry) error {

@@ -155,6 +155,25 @@ func runServe(log *slog.Logger) error {
 		}
 	}
 
+	// Hourly sweep of expired admin tokens. They are refused at auth time
+	// regardless; this only keeps the table from growing forever.
+	go func() {
+		ticker := time.NewTicker(time.Hour)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if n, err := svc.CleanupExpiredTokens(ctx); err != nil {
+					log.Error("token cleanup", "err", err)
+				} else if n > 0 {
+					log.Info("token cleanup", "deleted", n)
+				}
+			}
+		}
+	}()
+
 	handler := server.New(svc, log,
 		server.WithClientRateLimit(cfg.ClientRateBurst, cfg.ClientRateRefill),
 	).Handler()

@@ -287,6 +287,19 @@ func (f *FakeStore) GetAdminTokenByHash(_ context.Context, tokenHash []byte) (st
 	return store.AdminToken{}, store.ErrNotFound
 }
 
+func (f *FakeStore) DeleteExpiredAdminTokens(_ context.Context, before time.Time) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var n int64
+	for id, t := range f.tokens {
+		if t.ExpiresAt.Before(before) {
+			delete(f.tokens, id)
+			n++
+		}
+	}
+	return n, nil
+}
+
 func (f *FakeStore) AppendAudit(_ context.Context, e store.AuditEntry) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()

@@ -146,6 +146,9 @@ type Store interface {
 	// DeleteAdminToken revokes a token by its hash. Deleting a token that
 	// does not exist is not an error; revocation is idempotent.
 	DeleteAdminToken(ctx context.Context, tokenHash []byte) error
+	// DeleteExpiredAdminTokens removes tokens that expired before the given
+	// instant and reports how many went.
+	DeleteExpiredAdminTokens(ctx context.Context, before time.Time) (int64, error)
 
 	// AppendAudit records one admin action. ID and At are assigned by the
 	// caller-facing service, not the store.

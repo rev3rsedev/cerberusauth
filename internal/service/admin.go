@@ -355,6 +355,13 @@ func (s *Service) Logout(ctx context.Context, token string) error {
 	return s.audit(ctx, AuditLogout, "", "")
 }
 
+// CleanupExpiredTokens deletes admin tokens past their expiry. Expired
+// tokens are already refused at authentication time; this only reclaims
+// storage, so it runs on a timer, not in any request path.
+func (s *Service) CleanupExpiredTokens(ctx context.Context) (int64, error) {
+	return s.store.DeleteExpiredAdminTokens(ctx, s.now().UTC())
+}
+
 // AuthenticateToken resolves a bearer token to the admin who owns it.
 func (s *Service) AuthenticateToken(ctx context.Context, token string) (uuid.UUID, error) {
 	t, err := s.store.GetAdminTokenByHash(ctx, auth.HashToken(token))

@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -106,6 +107,34 @@ func TestAuditTrailForLogins(t *testing.T) {
 		if entries[i].AdminID != nil {
 			t.Errorf("failed login must not attribute an admin, got %v", entries[i].AdminID)
 		}
+	}
+}
+
+func TestCleanupExpiredTokens(t *testing.T) {
+	e := newEnv(t)
+	if _, err := e.svc.CreateAdminUser(e.ctx, "admin@example.com", "correct-horse-battery"); err != nil {
+		t.Fatal(err)
+	}
+	token, _, err := e.svc.Login(e.ctx, "admin@example.com", "correct-horse-battery")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Fresh token survives the sweep.
+	if n, err := e.svc.CleanupExpiredTokens(e.ctx); err != nil || n != 0 {
+		t.Fatalf("fresh sweep: deleted %d, err %v", n, err)
+	}
+	if _, err := e.svc.AuthenticateToken(e.ctx, token); err != nil {
+		t.Fatal("fresh token swept")
+	}
+
+	// Past the TTL it goes, and authentication already refuses it anyway.
+	e.advance(25 * time.Hour)
+	if _, err := e.svc.AuthenticateToken(e.ctx, token); err == nil {
+		t.Fatal("expired token still authenticates")
+	}
+	if n, err := e.svc.CleanupExpiredTokens(e.ctx); err != nil || n != 1 {
+		t.Fatalf("expired sweep: deleted %d, err %v", n, err)
 	}
 }
 
