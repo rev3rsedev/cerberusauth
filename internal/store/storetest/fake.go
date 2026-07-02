@@ -19,6 +19,7 @@ import (
 type FakeStore struct {
 	mu       sync.Mutex
 	apps     map[uuid.UUID]store.Application
+	keys     map[uuid.UUID]store.AppKey
 	licenses map[uuid.UUID]store.License
 	admins   map[uuid.UUID]store.AdminUser
 	tokens   map[uuid.UUID]store.AdminToken
@@ -30,16 +31,89 @@ var _ store.Store = (*FakeStore)(nil)
 func New() *FakeStore {
 	return &FakeStore{
 		apps:     make(map[uuid.UUID]store.Application),
+		keys:     make(map[uuid.UUID]store.AppKey),
 		licenses: make(map[uuid.UUID]store.License),
 		admins:   make(map[uuid.UUID]store.AdminUser),
 		tokens:   make(map[uuid.UUID]store.AdminToken),
 	}
 }
 
-func (f *FakeStore) CreateApplication(_ context.Context, app store.Application) error {
+func (f *FakeStore) CreateApplication(_ context.Context, app store.Application, key store.AppKey) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.apps[app.ID] = app
+	f.keys[key.ID] = key
+	return nil
+}
+
+func (f *FakeStore) GetActiveAppKey(_ context.Context, appID uuid.UUID) (store.AppKey, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, k := range f.keys {
+		if k.AppID == appID && k.Active {
+			return k, nil
+		}
+	}
+	return store.AppKey{}, store.ErrNotFound
+}
+
+func (f *FakeStore) ListAppKeys(_ context.Context, appID uuid.UUID) ([]store.AppKey, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := []store.AppKey{}
+	for _, k := range f.keys {
+		if k.AppID == appID {
+			out = append(out, k)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if !out[i].CreatedAt.Equal(out[j].CreatedAt) {
+			return out[i].CreatedAt.After(out[j].CreatedAt)
+		}
+		return out[i].ID.String() < out[j].ID.String()
+	})
+	return out, nil
+}
+
+func (f *FakeStore) RotateAppKey(_ context.Context, appID uuid.UUID, newKey store.AppKey, retiredAt time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	retired := false
+	for id, k := range f.keys {
+		if k.AppID == appID && k.Active {
+			k.Active = false
+			k.RetiredAt = &retiredAt
+			f.keys[id] = k
+			retired = true
+		}
+	}
+	if !retired {
+		return store.ErrNotFound
+	}
+	f.keys[newKey.ID] = newKey
+	return nil
+}
+
+func (f *FakeStore) ListAllAppKeys(_ context.Context) ([]store.AppKey, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make([]store.AppKey, 0, len(f.keys))
+	for _, k := range f.keys {
+		out = append(out, k)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID.String() < out[j].ID.String() })
+	return out, nil
+}
+
+func (f *FakeStore) UpdateAppKeyCiphertext(_ context.Context, id uuid.UUID, privateKeyEnc []byte) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	k, ok := f.keys[id]
+	if !ok {
+		return store.ErrNotFound
+	}
+	k.PrivateKeyEnc = privateKeyEnc
+	f.keys[id] = k
 	return nil
 }
 

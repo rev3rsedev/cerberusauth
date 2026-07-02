@@ -24,6 +24,7 @@ type env struct {
 	st  *storetest.FakeStore
 	now *time.Time
 	app store.Application
+	key store.AppKey // the app's active signing key at creation time
 	ctx context.Context
 }
 
@@ -41,11 +42,11 @@ func newEnv(t *testing.T) *env {
 		TokenTTL:  24 * time.Hour,
 		Now:       func() time.Time { return *e.now },
 	})
-	app, err := e.svc.CreateApplication(e.ctx, "Test App")
+	app, key, err := e.svc.CreateApplication(e.ctx, "Test App")
 	if err != nil {
 		t.Fatalf("CreateApplication: %v", err)
 	}
-	e.app = app
+	e.app, e.key = app, key
 	return e
 }
 
@@ -79,7 +80,7 @@ func (e *env) verify(t *testing.T, resp service.SignedResponse) service.Payload 
 	if resp.Alg != "ed25519" {
 		t.Fatalf("alg = %q", resp.Alg)
 	}
-	p, err := service.VerifyResponse(ed25519.PublicKey(e.app.PublicKey), resp)
+	p, err := service.VerifyResponse(ed25519.PublicKey(e.key.PublicKey), resp)
 	if err != nil {
 		t.Fatalf("VerifyResponse: %v", err)
 	}
@@ -405,7 +406,7 @@ func TestTamperedEnvelopeFailsVerification(t *testing.T) {
 	forged := resp
 	forged.Payload = base64.StdEncoding.EncodeToString(raw)
 
-	if _, err := service.VerifyResponse(ed25519.PublicKey(e.app.PublicKey), forged); !errors.Is(err, service.ErrBadSignature) {
+	if _, err := service.VerifyResponse(ed25519.PublicKey(e.key.PublicKey), forged); !errors.Is(err, service.ErrBadSignature) {
 		t.Fatalf("forged payload verified: %v", err)
 	}
 }

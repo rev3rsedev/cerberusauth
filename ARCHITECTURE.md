@@ -85,8 +85,15 @@ also needs the master key from the environment. Limitation: an attacker who
 can read the server's environment or memory gets the signing keys. Any
 design that signs online has that property.
 
-Key rotation is deliberately out of scope for v0.1 (TODO: rotation with
-overlapping validity, `key_id` already exists in the envelope to support it).
+Signing keys rotate with overlapping validity: an app holds any number of
+keys in `app_keys`, exactly one active (database-enforced by a partial
+unique index). `POST /v1/admin/apps/{id}/rotate-key` retires the active
+key and installs a fresh one in a single transaction; retired keys stay on
+the pubkey endpoint so clients that pin them keep verifying while they
+migrate. The envelope's `key_id` tells a multi-key client which pin to
+use. The Go SDK accepts extra pins via `WithExtraPublicKeys`. Procedure
+and the leaked-master-key runbook: [docs/KEY-ROTATION.md](docs/KEY-ROTATION.md);
+`cerberusd rekey` re-encrypts all signing keys under a new master key.
 
 ### Sign raw bytes, transport them base64-encoded
 The signed unit is the exact JSON byte sequence the server produced. The
@@ -256,5 +263,6 @@ transit readable.
   never import `internal/` packages, so it can move to its own module if
   demand appears. `TODO(v0.2)`: C# SDK next, Rust maybe.
 - `TODO(v0.2)`: global rate limiting middleware (login already has its own per-IP limiter).
-- `TODO(v0.2)`: audit log table; key rotation with overlapping `key_id`s.
+- Audit log ships in 0002_audit_log.sql (append-only, actor via request
+  context); key rotation in 0003_app_keys.sql. Both were v0.2 stubs.
 - `TODO(v0.3)`: end-user accounts (KeyAuth-style user/pass per app), resellers, webhooks.

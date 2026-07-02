@@ -31,6 +31,15 @@
 // wrong clock therefore still validate; callers see ReasonStaleTimestamp
 // only when the corrected retry is rejected too.
 //
+// # Key rotation
+//
+// A Client can pin several keys at once (WithExtraPublicKeys); responses
+// verifying under any of them are accepted, selected by the envelope's
+// key_id. The rotation flow: ship a client release pinning the old and the
+// new key, rotate on the server (POST /v1/admin/apps/{id}/rotate-key),
+// then drop the old pin in the following release. Clients that never
+// migrate keep failing closed, which is the point of pinning.
+//
 // # Offline grace period
 //
 // The SDK stays stateless on purpose; caching policy belongs to the app.
@@ -47,6 +56,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -94,14 +104,19 @@ type request struct {
 }
 
 // Client talks to one CerberusAuth server about one application, verifying
-// every response against the pinned public key. It is safe for concurrent
+// every response against the pinned public keys. It is safe for concurrent
 // use. Use it by pointer; the zero value is not functional.
 type Client struct {
 	baseURL string
 	appID   string
-	pub     ed25519.PublicKey
-	httpc   *http.Client
-	now     func() time.Time
+	// keys maps key fingerprints to pinned verification keys. More than
+	// one entry only during a key rotation window.
+	keys  map[string]ed25519.PublicKey
+	httpc *http.Client
+	now   func() time.Time
+
+	// extraRaw holds keys added via options, parsed by New.
+	extraRaw []string
 
 	// offset is added to the local clock when stamping requests, learned
 	// from signed stale_timestamp verdicts. See the package doc.
@@ -117,14 +132,19 @@ func WithHTTPClient(h *http.Client) Option {
 	return func(c *Client) { c.httpc = h }
 }
 
+// WithExtraPublicKeys pins additional verification keys (base64 Ed25519),
+// for the overlap window of a key rotation: ship a release pinning both
+// the old and the new key, rotate server-side, then drop the old pin in
+// the release after. Responses verifying under any pinned key are
+// accepted; the envelope's key_id picks the right one.
+func WithExtraPublicKeys(publicKeys ...string) Option {
+	return func(c *Client) { c.extraRaw = append(c.extraRaw, publicKeys...) }
+}
+
 // New builds a Client for one application. baseURL is the server root,
 // like "https://auth.example.com"; appID is the application UUID; publicKey
 // is the app's base64 Ed25519 verification key, pinned from app creation.
 func New(baseURL, appID, publicKey string, opts ...Option) (*Client, error) {
-	pub, err := base64.StdEncoding.DecodeString(publicKey)
-	if err != nil || len(pub) != ed25519.PublicKeySize {
-		return nil, errors.New("client: public key must be a base64 32-byte Ed25519 key")
-	}
 	u, err := url.Parse(baseURL)
 	if err != nil || u.Scheme == "" || u.Host == "" {
 		return nil, errors.New("client: base URL must be absolute, like https://auth.example.com")
@@ -135,14 +155,29 @@ func New(baseURL, appID, publicKey string, opts ...Option) (*Client, error) {
 	c := &Client{
 		baseURL: strings.TrimRight(baseURL, "/"),
 		appID:   appID,
-		pub:     ed25519.PublicKey(pub),
+		keys:    make(map[string]ed25519.PublicKey),
 		httpc:   &http.Client{Timeout: 15 * time.Second},
 		now:     time.Now,
 	}
 	for _, o := range opts {
 		o(c)
 	}
+	for _, raw := range append([]string{publicKey}, c.extraRaw...) {
+		pub, err := base64.StdEncoding.DecodeString(raw)
+		if err != nil || len(pub) != ed25519.PublicKeySize {
+			return nil, errors.New("client: public key must be a base64 32-byte Ed25519 key")
+		}
+		c.keys[keyID(pub)] = ed25519.PublicKey(pub)
+	}
+	c.extraRaw = nil
 	return c, nil
+}
+
+// keyID mirrors the server's key fingerprint: first 8 bytes of the
+// SHA-256 of the raw public key, hex-encoded.
+func keyID(pub []byte) string {
+	sum := sha256.Sum256(pub)
+	return hex.EncodeToString(sum[:8])
 }
 
 // Validate asks whether the license is good for this device right now.
@@ -243,8 +278,24 @@ func (c *Client) verify(envelopeJSON []byte, wantNonce string) (*Verdict, error)
 	if err != nil {
 		return nil, ErrBadSignature
 	}
-	if !ed25519.Verify(c.pub, rawPayload, sig) {
-		return nil, ErrBadSignature
+	// The envelope's key_id picks the pinned key; if it names none of ours
+	// (older server, fingerprint drift), fall back to trying each pinned
+	// key. Either way, only a signature under a pinned key passes.
+	if pub, ok := c.keys[env.KeyID]; ok {
+		if !ed25519.Verify(pub, rawPayload, sig) {
+			return nil, ErrBadSignature
+		}
+	} else {
+		verified := false
+		for _, pub := range c.keys {
+			if ed25519.Verify(pub, rawPayload, sig) {
+				verified = true
+				break
+			}
+		}
+		if !verified {
+			return nil, ErrBadSignature
+		}
 	}
 
 	var p payload

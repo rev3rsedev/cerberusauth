@@ -362,6 +362,50 @@ func TestUnsupportedAlgorithmRejected(t *testing.T) {
 	}
 }
 
+func TestExtraPinnedKeys(t *testing.T) {
+	pubA, _ := testKeypair(t)
+	pubB, privB := testKeypair(t)
+
+	// The server signs with key B and announces its real fingerprint; the
+	// client pins A as primary and B as extra.
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req request
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		env := signEnvelope(t, privB, okPayload(req))
+		env.KeyID = keyID(pubB)
+		_ = json.NewEncoder(w).Encode(env)
+	}))
+	defer ts.Close()
+
+	c, err := New(ts.URL, testAppID,
+		base64.StdEncoding.EncodeToString(pubA),
+		WithExtraPublicKeys(base64.StdEncoding.EncodeToString(pubB)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, err := c.Validate(context.Background(), "KEY", "device-1")
+	if err != nil || !v.Valid {
+		t.Fatalf("extra pinned key not honored: %+v, %v", v, err)
+	}
+	if v.KeyID != keyID(pubB) {
+		t.Errorf("verdict KeyID = %q, want %q", v.KeyID, keyID(pubB))
+	}
+
+	// A signature by an unpinned key stays rejected even with extras.
+	_, privC := testKeypair(t)
+	ts2 := verdictServer(t, nil, privC, okPayload)
+	defer ts2.Close()
+	c2, err := New(ts2.URL, testAppID,
+		base64.StdEncoding.EncodeToString(pubA),
+		WithExtraPublicKeys(base64.StdEncoding.EncodeToString(pubB)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c2.Validate(context.Background(), "KEY", "device-1"); !errors.Is(err, ErrBadSignature) {
+		t.Fatalf("unpinned key accepted: %v", err)
+	}
+}
+
 func TestVerifyStored(t *testing.T) {
 	pub, priv := testKeypair(t)
 	ts := verdictServer(t, nil, priv, okPayload)

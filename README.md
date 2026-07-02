@@ -215,10 +215,13 @@ POST   /v1/admin/login                    email + password -> bearer token
 DELETE /v1/admin/token                    revoke the presented token
 POST   /v1/admin/apps                     create app (returns its public key)
 GET    /v1/admin/apps[/{id}]
+GET    /v1/admin/apps/{id}/keys           all signing keys, active + retired
+POST   /v1/admin/apps/{id}/rotate-key     rotate signing key (docs/KEY-ROTATION.md)
 POST   /v1/admin/apps/{id}/licenses       batch-issue; plaintext keys returned once
 GET    /v1/admin/apps/{id}/licenses       paginated list (key hints only)
 GET    /v1/admin/licenses/{id}
 POST   /v1/admin/licenses/{id}/ban        also unban, reset-hwid
+GET    /v1/admin/audit                    append-only audit trail, newest first
 ```
 
 Verdicts about a license are always HTTP 200 with a signed payload.

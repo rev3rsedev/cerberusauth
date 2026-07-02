@@ -14,13 +14,25 @@ import (
 // ErrNotFound is returned by all Get* methods when no row matches.
 var ErrNotFound = errors.New("store: not found")
 
-// Application is a tenant: one product/app with its own signing keypair.
+// Application is a tenant: one product/app. Its signing keys live in
+// AppKey rows; exactly one is active at a time.
 type Application struct {
+	ID        uuid.UUID
+	Name      string
+	CreatedAt time.Time
+}
+
+// AppKey is one Ed25519 keypair belonging to an application. The active
+// key signs; retired keys stay listed so clients that still pin them keep
+// verifying old responses and can migrate on their own schedule.
+type AppKey struct {
 	ID            uuid.UUID
-	Name          string
+	AppID         uuid.UUID
 	PublicKey     []byte // raw Ed25519 public key (32 bytes)
-	PrivateKeyEnc []byte // Ed25519 private key, AES-256-GCM under the master key
+	PrivateKeyEnc []byte // Ed25519 private key, AES-256-GCM under the derived key
+	Active        bool
 	CreatedAt     time.Time
+	RetiredAt     *time.Time
 }
 
 type LicenseStatus string
@@ -93,9 +105,22 @@ type AuditEntry struct {
 // transition (RedeemLicense, BindHWID) return false instead of writing when
 // the precondition no longer holds, so concurrent requests cannot both win.
 type Store interface {
-	CreateApplication(ctx context.Context, app Application) error
+	// CreateApplication persists an app together with its first signing
+	// key, atomically: an app without an active key cannot answer anything.
+	CreateApplication(ctx context.Context, app Application, key AppKey) error
 	GetApplication(ctx context.Context, id uuid.UUID) (Application, error)
 	ListApplications(ctx context.Context) ([]Application, error)
+
+	GetActiveAppKey(ctx context.Context, appID uuid.UUID) (AppKey, error)
+	// ListAppKeys returns all of an app's keys, newest first.
+	ListAppKeys(ctx context.Context, appID uuid.UUID) ([]AppKey, error)
+	// RotateAppKey atomically retires the current active key and installs
+	// newKey as the only active one.
+	RotateAppKey(ctx context.Context, appID uuid.UUID, newKey AppKey, retiredAt time.Time) error
+	// ListAllAppKeys returns every key of every app (for master-key
+	// re-encryption); UpdateAppKeyCiphertext swaps one key's ciphertext.
+	ListAllAppKeys(ctx context.Context) ([]AppKey, error)
+	UpdateAppKeyCiphertext(ctx context.Context, id uuid.UUID, privateKeyEnc []byte) error
 
 	CreateLicenses(ctx context.Context, lics []License) error
 	GetLicenseByID(ctx context.Context, id uuid.UUID) (License, error)

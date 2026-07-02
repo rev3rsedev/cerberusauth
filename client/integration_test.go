@@ -35,7 +35,7 @@ func TestAgainstRealServer(t *testing.T) {
 	ts := httptest.NewServer(server.New(svc, log).Handler())
 	defer ts.Close()
 
-	app, err := svc.CreateApplication(ctx, "sdk-e2e")
+	app, appKey, err := svc.CreateApplication(ctx, "sdk-e2e")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +45,7 @@ func TestAgainstRealServer(t *testing.T) {
 		t.Fatal(err)
 	}
 	key := issued[0].Key
-	pubB64 := base64.StdEncoding.EncodeToString(app.PublicKey)
+	pubB64 := base64.StdEncoding.EncodeToString(appKey.PublicKey)
 
 	c, err := client.New(ts.URL, app.ID.String(), pubB64)
 	if err != nil {
@@ -130,5 +130,57 @@ func TestAgainstRealServer(t *testing.T) {
 	var apiErr *client.APIError
 	if _, err := ghost.Validate(ctx, key, "device-1"); !errors.As(err, &apiErr) || apiErr.StatusCode != http.StatusNotFound {
 		t.Fatalf("unknown app: want 404 APIError, got %v", err)
+	}
+}
+
+// TestKeyRotationOverlap walks the documented rotation flow against the
+// real stack: a client pinning only the old key fails closed after the
+// rotation; one pinning old + new keeps working before and after.
+func TestKeyRotationOverlap(t *testing.T) {
+	ctx := context.Background()
+	svc := service.New(storetest.New(), service.Options{
+		MasterKey: bytes.Repeat([]byte{0x42}, 32),
+	})
+	ts := httptest.NewServer(server.New(svc, slog.New(slog.NewTextHandler(io.Discard, nil))).Handler())
+	defer ts.Close()
+
+	app, oldKey, err := svc.CreateApplication(ctx, "rotation-e2e")
+	if err != nil {
+		t.Fatal(err)
+	}
+	issued, err := svc.IssueLicenses(ctx, app.ID, 1, "pro", nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lic := issued[0].Key
+	oldPub := base64.StdEncoding.EncodeToString(oldKey.PublicKey)
+
+	oldOnly, err := client.New(ts.URL, app.ID.String(), oldPub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v, err := oldOnly.Redeem(ctx, lic, "device-1"); err != nil || !v.Valid {
+		t.Fatalf("pre-rotation redeem: %+v, %v", v, err)
+	}
+
+	newKey, err := svc.RotateAppKey(ctx, app.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newPub := base64.StdEncoding.EncodeToString(newKey.PublicKey)
+
+	// The client that never learned the new key refuses everything now:
+	// fail closed, exactly what pinning promises.
+	if _, err := oldOnly.Validate(ctx, lic, "device-1"); !errors.Is(err, client.ErrBadSignature) {
+		t.Fatalf("old-only client after rotation: want ErrBadSignature, got %v", err)
+	}
+
+	// The overlap client pins both and keeps working.
+	both, err := client.New(ts.URL, app.ID.String(), newPub, client.WithExtraPublicKeys(oldPub))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v, err := both.Validate(ctx, lic, "device-1"); err != nil || !v.Valid {
+		t.Fatalf("dual-pinned client after rotation: %+v, %v", v, err)
 	}
 }

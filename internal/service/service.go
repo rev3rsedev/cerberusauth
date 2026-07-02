@@ -115,7 +115,7 @@ func (s *Service) Validate(ctx context.Context, req ValidationRequest) (SignedRe
 			p.Reason = ReasonHWIDMismatch
 		}
 	}
-	return s.signPayload(app, p)
+	return s.signPayload(ctx, app.ID, p)
 }
 
 // Redeem activates an issued license: binds the device and starts the
@@ -180,7 +180,7 @@ func (s *Service) Redeem(ctx context.Context, req ValidationRequest) (SignedResp
 			return SignedResponse{}, err
 		}
 	}
-	return s.signPayload(app, p)
+	return s.signPayload(ctx, app.ID, p)
 }
 
 // resolve performs the steps shared by Validate and Redeem: app lookup,
@@ -208,7 +208,7 @@ func (s *Service) resolve(ctx context.Context, req ValidationRequest) (app store
 
 	signEarly := func(reason string) (store.Application, Payload, store.License, *SignedResponse, error) {
 		p.Reason = reason
-		resp, serr := s.signPayload(app, p)
+		resp, serr := s.signPayload(ctx, app.ID, p)
 		if serr != nil {
 			return app, p, lic, nil, serr
 		}
@@ -284,10 +284,14 @@ func computeExpiry(lic store.License, now time.Time) *time.Time {
 	return nil
 }
 
-func (s *Service) signPayload(app store.Application, p Payload) (SignedResponse, error) {
-	priv, err := signing.DecryptPrivateKey(s.encKey, app.PrivateKeyEnc)
+func (s *Service) signPayload(ctx context.Context, appID uuid.UUID, p Payload) (SignedResponse, error) {
+	key, err := s.store.GetActiveAppKey(ctx, appID)
 	if err != nil {
-		return SignedResponse{}, fmt.Errorf("service: app %s: %w", app.ID, err)
+		return SignedResponse{}, fmt.Errorf("service: app %s: active key: %w", appID, err)
+	}
+	priv, err := signing.DecryptPrivateKey(s.encKey, key.PrivateKeyEnc)
+	if err != nil {
+		return SignedResponse{}, fmt.Errorf("service: app %s: %w", appID, err)
 	}
 	raw, err := json.Marshal(p)
 	if err != nil {
@@ -296,7 +300,7 @@ func (s *Service) signPayload(app store.Application, p Payload) (SignedResponse,
 	sig := signing.Sign(priv, raw)
 	return SignedResponse{
 		Alg:       "ed25519",
-		KeyID:     signing.KeyID(app.PublicKey),
+		KeyID:     signing.KeyID(key.PublicKey),
 		Payload:   base64.StdEncoding.EncodeToString(raw),
 		Signature: base64.StdEncoding.EncodeToString(sig),
 	}, nil

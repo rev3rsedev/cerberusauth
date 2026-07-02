@@ -65,6 +65,8 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /v1/admin/apps", s.requireAdmin(s.handleCreateApp))
 	s.mux.HandleFunc("GET /v1/admin/apps", s.requireAdmin(s.handleListApps))
 	s.mux.HandleFunc("GET /v1/admin/apps/{id}", s.requireAdmin(s.handleGetApp))
+	s.mux.HandleFunc("GET /v1/admin/apps/{id}/keys", s.requireAdmin(s.handleListAppKeys))
+	s.mux.HandleFunc("POST /v1/admin/apps/{id}/rotate-key", s.requireAdmin(s.handleRotateAppKey))
 	s.mux.HandleFunc("POST /v1/admin/apps/{id}/licenses", s.requireAdmin(s.handleIssueLicenses))
 	s.mux.HandleFunc("GET /v1/admin/apps/{id}/licenses", s.requireAdmin(s.handleListLicenses))
 	s.mux.HandleFunc("GET /v1/admin/licenses/{id}", s.requireAdmin(s.handleGetLicense))

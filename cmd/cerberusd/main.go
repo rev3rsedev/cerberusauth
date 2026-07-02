@@ -45,6 +45,8 @@ func main() {
 		err = runCreateAdmin(log, os.Args[2:])
 	case "genkey":
 		err = runGenkey()
+	case "rekey":
+		err = runRekey(log, os.Args[2:])
 	case "help", "-h", "--help":
 		usage()
 	default:
@@ -66,6 +68,9 @@ Commands:
   migrate       apply pending database migrations and exit
   create-admin  create an admin user: cerberusd create-admin -email a@b.c -password ...
   genkey        print a fresh CERBERUS_MASTER_KEY and exit
+  rekey         re-encrypt all app signing keys under a new master key:
+                cerberusd rekey -old <base64> -new <base64>
+                (see docs/KEY-ROTATION.md for the full leaked-key runbook)
 
 Configuration is environment-only; see .env.example.`)
 }
@@ -241,5 +246,96 @@ func runGenkey() error {
 		return err
 	}
 	fmt.Println(key)
+	return nil
+}
+
+// runRekey re-encrypts every app signing key under a new master key: the
+// recovery move when the master key leaked. Safe to rerun after a partial
+// failure; rows already under the new key are skipped. Admin users cannot
+// be migrated (their email hashes are peppered by the old key and the
+// plaintext emails are never stored), so they must be recreated afterwards
+// with create-admin.
+func runRekey(log *slog.Logger, args []string) error {
+	fs := flag.NewFlagSet("rekey", flag.ExitOnError)
+	oldB64 := fs.String("old", "", "current (compromised) master key, base64")
+	newB64 := fs.String("new", "", "replacement master key, base64 (generate with genkey)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *oldB64 == "" || *newB64 == "" {
+		return errors.New("rekey: -old and -new are required")
+	}
+	if *oldB64 == *newB64 {
+		return errors.New("rekey: -old and -new are the same key")
+	}
+	oldMaster, err := signing.ParseMasterKey(*oldB64)
+	if err != nil {
+		return fmt.Errorf("rekey: -old: %w", err)
+	}
+	newMaster, err := signing.ParseMasterKey(*newB64)
+	if err != nil {
+		return fmt.Errorf("rekey: -new: %w", err)
+	}
+	oldEnc, _, err := signing.DeriveKeys(oldMaster)
+	if err != nil {
+		return err
+	}
+	newEnc, _, err := signing.DeriveKeys(newMaster)
+	if err != nil {
+		return err
+	}
+
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	pool, err := connect(ctx, log, cfg.DatabaseURL)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+
+	st := postgres.New(pool)
+	keys, err := st.ListAllAppKeys(ctx)
+	if err != nil {
+		return err
+	}
+
+	reencrypted, skipped := 0, 0
+	for _, k := range keys {
+		priv, err := signing.DecryptPrivateKey(oldEnc, k.PrivateKeyEnc)
+		if errors.Is(err, signing.ErrDecryptFailed) {
+			// Not under the old key. If it already decrypts under the new
+			// one this is a rerun after a partial failure; skip it.
+			if _, nerr := signing.DecryptPrivateKey(newEnc, k.PrivateKeyEnc); nerr == nil {
+				skipped++
+				continue
+			}
+			return fmt.Errorf("rekey: app key %s decrypts under neither key; wrong -old?", k.ID)
+		}
+		if err != nil {
+			return fmt.Errorf("rekey: app key %s: %w", k.ID, err)
+		}
+		enc, err := signing.EncryptPrivateKey(newEnc, priv)
+		if err != nil {
+			return err
+		}
+		if err := st.UpdateAppKeyCiphertext(ctx, k.ID, enc); err != nil {
+			return err
+		}
+		reencrypted++
+	}
+
+	log.Info("rekey complete", "reencrypted", reencrypted, "already_done", skipped)
+	fmt.Fprintln(os.Stderr, `
+Rekey done. Now:
+  1. Set CERBERUS_MASTER_KEY to the new key everywhere and restart.
+  2. Recreate admin users (create-admin): email hashes were peppered by
+     the old key and cannot be migrated.
+  3. Rotate every app's signing key (POST /v1/admin/apps/{id}/rotate-key):
+     whoever had the old master key could have decrypted the old signing
+     keys, so treat them as public.
+  4. Ship client updates pinning the new public keys.`)
 	return nil
 }

@@ -15,35 +15,88 @@ import (
 	"github.com/rev3rsedev/cerberusauth/internal/store"
 )
 
-// CreateApplication provisions a tenant: generates its Ed25519 keypair and
-// stores the private key encrypted under the derived encryption key.
-func (s *Service) CreateApplication(ctx context.Context, name string) (store.Application, error) {
+// CreateApplication provisions a tenant: generates its first Ed25519
+// keypair and stores app and active key atomically, private key encrypted
+// under the derived encryption key.
+func (s *Service) CreateApplication(ctx context.Context, name string) (store.Application, store.AppKey, error) {
 	name = strings.TrimSpace(name)
 	if name == "" || len(name) > 200 {
-		return store.Application{}, fmt.Errorf("%w: name must be 1-200 characters", ErrInvalidInput)
+		return store.Application{}, store.AppKey{}, fmt.Errorf("%w: name must be 1-200 characters", ErrInvalidInput)
 	}
+	app := store.Application{
+		ID:        uuid.New(),
+		Name:      name,
+		CreatedAt: s.now().UTC(),
+	}
+	key, err := s.newAppKey(app.ID)
+	if err != nil {
+		return store.Application{}, store.AppKey{}, err
+	}
+	if err := s.store.CreateApplication(ctx, app, key); err != nil {
+		return store.Application{}, store.AppKey{}, err
+	}
+	if err := s.audit(ctx, AuditAppCreate, app.ID.String(), name); err != nil {
+		return store.Application{}, store.AppKey{}, err
+	}
+	return app, key, nil
+}
+
+// newAppKey mints a fresh active signing key for an app.
+func (s *Service) newAppKey(appID uuid.UUID) (store.AppKey, error) {
 	kp, err := signing.Generate()
 	if err != nil {
-		return store.Application{}, err
+		return store.AppKey{}, err
 	}
 	enc, err := signing.EncryptPrivateKey(s.encKey, kp.Private)
 	if err != nil {
-		return store.Application{}, err
+		return store.AppKey{}, err
 	}
-	app := store.Application{
+	return store.AppKey{
 		ID:            uuid.New(),
-		Name:          name,
+		AppID:         appID,
 		PublicKey:     kp.Public,
 		PrivateKeyEnc: enc,
+		Active:        true,
 		CreatedAt:     s.now().UTC(),
+	}, nil
+}
+
+// GetActiveKey returns the key currently signing for an app.
+func (s *Service) GetActiveKey(ctx context.Context, appID uuid.UUID) (store.AppKey, error) {
+	key, err := s.store.GetActiveAppKey(ctx, appID)
+	if errors.Is(err, store.ErrNotFound) {
+		return store.AppKey{}, ErrAppNotFound
 	}
-	if err := s.store.CreateApplication(ctx, app); err != nil {
-		return store.Application{}, err
+	return key, err
+}
+
+// ListAppKeys returns all of an app's keys, newest first.
+func (s *Service) ListAppKeys(ctx context.Context, appID uuid.UUID) ([]store.AppKey, error) {
+	if _, err := s.GetApplication(ctx, appID); err != nil {
+		return nil, err
 	}
-	if err := s.audit(ctx, AuditAppCreate, app.ID.String(), name); err != nil {
-		return store.Application{}, err
+	return s.store.ListAppKeys(ctx, appID)
+}
+
+// RotateAppKey retires the app's active key and installs a fresh one. Old
+// keys stay listed on the pubkey endpoint: clients pinning them keep
+// verifying, and the intended flow is pin both keys in the next client
+// release, then rotate, then drop the old pin the release after.
+func (s *Service) RotateAppKey(ctx context.Context, appID uuid.UUID) (store.AppKey, error) {
+	if _, err := s.GetApplication(ctx, appID); err != nil {
+		return store.AppKey{}, err
 	}
-	return app, nil
+	key, err := s.newAppKey(appID)
+	if err != nil {
+		return store.AppKey{}, err
+	}
+	if err := s.store.RotateAppKey(ctx, appID, key, s.now().UTC()); err != nil {
+		return store.AppKey{}, err
+	}
+	if err := s.audit(ctx, AuditAppRotateKey, appID.String(), "new key "+signing.KeyID(key.PublicKey)); err != nil {
+		return store.AppKey{}, err
+	}
+	return key, nil
 }
 
 func (s *Service) GetApplication(ctx context.Context, id uuid.UUID) (store.Application, error) {

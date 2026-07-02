@@ -67,24 +67,39 @@ func (s *Server) handleClientCall(call func(context.Context, service.ValidationR
 	}
 }
 
-// handlePubkey serves an app's verification key. Convenience for tooling;
-// production clients should pin the key at build time, since fetching it over
+// handlePubkey serves an app's verification keys. Convenience for tooling;
+// production clients should pin keys at build time, since fetching them over
 // the same channel you are trying to distrust defeats the purpose.
+// public_key/key_id describe the active key (the v0.1 shape); keys lists
+// every key, retired ones included, so clients can pre-pin ahead of a
+// rotation.
 func (s *Server) handlePubkey(w http.ResponseWriter, r *http.Request) {
 	appID, err := uuid.Parse(r.PathValue("app_id"))
 	if err != nil {
 		s.writeError(w, http.StatusBadRequest, "app_id must be a UUID")
 		return
 	}
-	app, err := s.svc.GetApplication(r.Context(), appID)
+	keys, err := s.svc.ListAppKeys(r.Context(), appID)
 	if err != nil {
 		s.writeServiceError(w, r, err)
 		return
 	}
-	s.writeJSON(w, http.StatusOK, map[string]string{
-		"app_id":     app.ID.String(),
-		"alg":        "ed25519",
-		"public_key": base64.StdEncoding.EncodeToString(app.PublicKey),
-		"key_id":     signing.KeyID(app.PublicKey),
-	})
+	resp := map[string]any{
+		"app_id": appID.String(),
+		"alg":    "ed25519",
+	}
+	list := make([]map[string]any, 0, len(keys))
+	for _, k := range keys {
+		list = append(list, map[string]any{
+			"key_id":     signing.KeyID(k.PublicKey),
+			"public_key": base64.StdEncoding.EncodeToString(k.PublicKey),
+			"active":     k.Active,
+		})
+		if k.Active {
+			resp["public_key"] = base64.StdEncoding.EncodeToString(k.PublicKey)
+			resp["key_id"] = signing.KeyID(k.PublicKey)
+		}
+	}
+	resp["keys"] = list
+	s.writeJSON(w, http.StatusOK, resp)
 }

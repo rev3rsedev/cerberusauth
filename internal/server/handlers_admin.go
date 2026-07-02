@@ -19,18 +19,36 @@ import (
 type appJSON struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`
-	PublicKey string    `json:"public_key"` // base64, raw Ed25519
+	PublicKey string    `json:"public_key"` // base64, raw Ed25519; the active key
 	KeyID     string    `json:"key_id"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
-func toAppJSON(a store.Application) appJSON {
+func toAppJSON(a store.Application, activeKey store.AppKey) appJSON {
 	return appJSON{
 		ID:        a.ID.String(),
 		Name:      a.Name,
-		PublicKey: base64.StdEncoding.EncodeToString(a.PublicKey),
-		KeyID:     signing.KeyID(a.PublicKey),
+		PublicKey: base64.StdEncoding.EncodeToString(activeKey.PublicKey),
+		KeyID:     signing.KeyID(activeKey.PublicKey),
 		CreatedAt: a.CreatedAt,
+	}
+}
+
+type appKeyJSON struct {
+	KeyID     string     `json:"key_id"`
+	PublicKey string     `json:"public_key"`
+	Active    bool       `json:"active"`
+	CreatedAt time.Time  `json:"created_at"`
+	RetiredAt *time.Time `json:"retired_at,omitempty"`
+}
+
+func toAppKeyJSON(k store.AppKey) appKeyJSON {
+	return appKeyJSON{
+		KeyID:     signing.KeyID(k.PublicKey),
+		PublicKey: base64.StdEncoding.EncodeToString(k.PublicKey),
+		Active:    k.Active,
+		CreatedAt: k.CreatedAt,
+		RetiredAt: k.RetiredAt,
 	}
 }
 
@@ -108,12 +126,12 @@ func (s *Server) handleCreateApp(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, http.StatusBadRequest, "malformed JSON body")
 		return
 	}
-	app, err := s.svc.CreateApplication(r.Context(), req.Name)
+	app, key, err := s.svc.CreateApplication(r.Context(), req.Name)
 	if err != nil {
 		s.writeServiceError(w, r, err)
 		return
 	}
-	s.writeJSON(w, http.StatusCreated, toAppJSON(app))
+	s.writeJSON(w, http.StatusCreated, toAppJSON(app, key))
 }
 
 func (s *Server) handleListApps(w http.ResponseWriter, r *http.Request) {
@@ -122,9 +140,16 @@ func (s *Server) handleListApps(w http.ResponseWriter, r *http.Request) {
 		s.writeServiceError(w, r, err)
 		return
 	}
+	// One key lookup per app. Fine at the scale of "my products"; revisit
+	// with a join if someone runs thousands of apps.
 	out := make([]appJSON, 0, len(apps))
 	for _, a := range apps {
-		out = append(out, toAppJSON(a))
+		key, err := s.svc.GetActiveKey(r.Context(), a.ID)
+		if err != nil {
+			s.writeServiceError(w, r, err)
+			return
+		}
+		out = append(out, toAppJSON(a, key))
 	}
 	s.writeJSON(w, http.StatusOK, map[string]any{"applications": out})
 }
@@ -140,7 +165,47 @@ func (s *Server) handleGetApp(w http.ResponseWriter, r *http.Request) {
 		s.writeServiceError(w, r, err)
 		return
 	}
-	s.writeJSON(w, http.StatusOK, toAppJSON(app))
+	key, err := s.svc.GetActiveKey(r.Context(), id)
+	if err != nil {
+		s.writeServiceError(w, r, err)
+		return
+	}
+	s.writeJSON(w, http.StatusOK, toAppJSON(app, key))
+}
+
+func (s *Server) handleListAppKeys(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, "id must be a UUID")
+		return
+	}
+	keys, err := s.svc.ListAppKeys(r.Context(), id)
+	if err != nil {
+		s.writeServiceError(w, r, err)
+		return
+	}
+	out := make([]appKeyJSON, 0, len(keys))
+	for _, k := range keys {
+		out = append(out, toAppKeyJSON(k))
+	}
+	s.writeJSON(w, http.StatusOK, map[string]any{"keys": out})
+}
+
+// handleRotateAppKey mints and activates a fresh signing key. The old key
+// is retired but stays on the pubkey endpoint so already-shipped clients
+// that pin it keep working while they migrate.
+func (s *Server) handleRotateAppKey(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, "id must be a UUID")
+		return
+	}
+	key, err := s.svc.RotateAppKey(r.Context(), id)
+	if err != nil {
+		s.writeServiceError(w, r, err)
+		return
+	}
+	s.writeJSON(w, http.StatusOK, toAppKeyJSON(key))
 }
 
 // --- licenses ---

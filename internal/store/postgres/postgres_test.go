@@ -41,22 +41,28 @@ func TestStoreIntegration(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond) // timestamptz keeps microseconds, not nanos
 
 	app := store.Application{
+		ID:        uuid.New(),
+		Name:      "Integration App",
+		CreatedAt: now,
+	}
+	firstKey := store.AppKey{
 		ID:            uuid.New(),
-		Name:          "Integration App",
+		AppID:         app.ID,
 		PublicKey:     randBytes(t, 32),
 		PrivateKeyEnc: randBytes(t, 76),
+		Active:        true,
 		CreatedAt:     now,
 	}
 
 	t.Run("applications", func(t *testing.T) {
-		if err := s.CreateApplication(ctx, app); err != nil {
+		if err := s.CreateApplication(ctx, app, firstKey); err != nil {
 			t.Fatal(err)
 		}
 		got, err := s.GetApplication(ctx, app.ID)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got.Name != app.Name || string(got.PublicKey) != string(app.PublicKey) || !got.CreatedAt.Equal(app.CreatedAt) {
+		if got.Name != app.Name || !got.CreatedAt.Equal(app.CreatedAt) {
 			t.Fatalf("roundtrip mismatch: %+v", got)
 		}
 		if _, err := s.GetApplication(ctx, uuid.New()); !errors.Is(err, store.ErrNotFound) {
@@ -65,6 +71,63 @@ func TestStoreIntegration(t *testing.T) {
 		apps, err := s.ListApplications(ctx)
 		if err != nil || len(apps) != 1 {
 			t.Fatalf("list: %v, len %d", err, len(apps))
+		}
+	})
+
+	t.Run("app keys", func(t *testing.T) {
+		got, err := s.GetActiveAppKey(ctx, app.ID)
+		if err != nil || string(got.PublicKey) != string(firstKey.PublicKey) || !got.Active {
+			t.Fatalf("active key: %v, %+v", err, got)
+		}
+		if _, err := s.GetActiveAppKey(ctx, uuid.New()); !errors.Is(err, store.ErrNotFound) {
+			t.Fatalf("unknown app active key: want ErrNotFound, got %v", err)
+		}
+
+		// Rotation retires the old key and installs the new one atomically.
+		second := store.AppKey{
+			ID:            uuid.New(),
+			AppID:         app.ID,
+			PublicKey:     randBytes(t, 32),
+			PrivateKeyEnc: randBytes(t, 76),
+			Active:        true,
+			CreatedAt:     now.Add(time.Second),
+		}
+		if err := s.RotateAppKey(ctx, app.ID, second, now.Add(time.Second)); err != nil {
+			t.Fatal(err)
+		}
+		got, err = s.GetActiveAppKey(ctx, app.ID)
+		if err != nil || got.ID != second.ID {
+			t.Fatalf("active after rotation: %v, %+v", err, got)
+		}
+		keys, err := s.ListAppKeys(ctx, app.ID)
+		if err != nil || len(keys) != 2 {
+			t.Fatalf("list keys: %v, len %d", err, len(keys))
+		}
+		if keys[0].ID != second.ID || keys[1].ID != firstKey.ID {
+			t.Fatalf("order wrong: %+v", keys)
+		}
+		if keys[1].RetiredAt == nil {
+			t.Fatal("old key not marked retired")
+		}
+		if err := s.RotateAppKey(ctx, uuid.New(), second, now); !errors.Is(err, store.ErrNotFound) {
+			t.Fatalf("rotate unknown app: want ErrNotFound, got %v", err)
+		}
+
+		// Master-key re-encryption path.
+		all, err := s.ListAllAppKeys(ctx)
+		if err != nil || len(all) != 2 {
+			t.Fatalf("list all keys: %v, len %d", err, len(all))
+		}
+		newCipher := randBytes(t, 76)
+		if err := s.UpdateAppKeyCiphertext(ctx, firstKey.ID, newCipher); err != nil {
+			t.Fatal(err)
+		}
+		keys, _ = s.ListAppKeys(ctx, app.ID)
+		if string(keys[1].PrivateKeyEnc) != string(newCipher) {
+			t.Fatal("ciphertext not updated")
+		}
+		if err := s.UpdateAppKeyCiphertext(ctx, uuid.New(), newCipher); !errors.Is(err, store.ErrNotFound) {
+			t.Fatalf("update unknown key: want ErrNotFound, got %v", err)
 		}
 	})
 

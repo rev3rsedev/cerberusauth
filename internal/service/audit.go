@@ -12,6 +12,7 @@ import (
 // the log elsewhere filter on them, so changing one is a breaking change.
 const (
 	AuditAppCreate        = "app.create"
+	AuditAppRotateKey     = "app.rotate_key"
 	AuditLicenseIssue     = "license.issue"
 	AuditLicenseBan       = "license.ban"
 	AuditLicenseUnban     = "license.unban"

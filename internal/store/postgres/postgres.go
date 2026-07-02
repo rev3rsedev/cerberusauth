@@ -30,22 +30,34 @@ func New(pool *pgxpool.Pool) *Store {
 
 // --- applications ---
 
-func (s *Store) CreateApplication(ctx context.Context, app store.Application) error {
-	_, err := s.pool.Exec(ctx, `
-		INSERT INTO applications (id, name, public_key, private_key_enc, created_at)
-		VALUES ($1, $2, $3, $4, $5)`,
-		app.ID, app.Name, app.PublicKey, app.PrivateKeyEnc, app.CreatedAt)
+func (s *Store) CreateApplication(ctx context.Context, app store.Application, key store.AppKey) error {
+	tx, err := s.pool.Begin(ctx)
 	if err != nil {
+		return fmt.Errorf("postgres: begin: %w", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // no-op after commit
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO applications (id, name, created_at)
+		VALUES ($1, $2, $3)`,
+		app.ID, app.Name, app.CreatedAt); err != nil {
 		return fmt.Errorf("postgres: create application: %w", err)
+	}
+	if _, err := tx.Exec(ctx, insertAppKeySQL,
+		key.ID, key.AppID, key.PublicKey, key.PrivateKeyEnc, key.Active, key.CreatedAt, key.RetiredAt); err != nil {
+		return fmt.Errorf("postgres: create app key: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("postgres: commit application: %w", err)
 	}
 	return nil
 }
 
-const appColumns = "id, name, public_key, private_key_enc, created_at"
+const appColumns = "id, name, created_at"
 
 func scanApplication(row pgx.Row) (store.Application, error) {
 	var app store.Application
-	err := row.Scan(&app.ID, &app.Name, &app.PublicKey, &app.PrivateKeyEnc, &app.CreatedAt)
+	err := row.Scan(&app.ID, &app.Name, &app.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return store.Application{}, store.ErrNotFound
 	}
@@ -76,6 +88,111 @@ func (s *Store) ListApplications(ctx context.Context) ([]store.Application, erro
 		apps = append(apps, app)
 	}
 	return apps, rows.Err()
+}
+
+// --- app keys ---
+
+const insertAppKeySQL = `
+	INSERT INTO app_keys (id, app_id, public_key, private_key_enc, active, created_at, retired_at)
+	VALUES ($1, $2, $3, $4, $5, $6, $7)`
+
+const appKeyColumns = "id, app_id, public_key, private_key_enc, active, created_at, retired_at"
+
+func scanAppKey(row pgx.Row) (store.AppKey, error) {
+	var k store.AppKey
+	err := row.Scan(&k.ID, &k.AppID, &k.PublicKey, &k.PrivateKeyEnc, &k.Active, &k.CreatedAt, &k.RetiredAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return store.AppKey{}, store.ErrNotFound
+	}
+	if err != nil {
+		return store.AppKey{}, fmt.Errorf("postgres: scan app key: %w", err)
+	}
+	return k, nil
+}
+
+func (s *Store) GetActiveAppKey(ctx context.Context, appID uuid.UUID) (store.AppKey, error) {
+	row := s.pool.QueryRow(ctx,
+		"SELECT "+appKeyColumns+" FROM app_keys WHERE app_id = $1 AND active", appID)
+	return scanAppKey(row)
+}
+
+func (s *Store) ListAppKeys(ctx context.Context, appID uuid.UUID) ([]store.AppKey, error) {
+	rows, err := s.pool.Query(ctx,
+		"SELECT "+appKeyColumns+" FROM app_keys WHERE app_id = $1 ORDER BY created_at DESC, id", appID)
+	if err != nil {
+		return nil, fmt.Errorf("postgres: list app keys: %w", err)
+	}
+	defer rows.Close()
+
+	keys := []store.AppKey{}
+	for rows.Next() {
+		k, err := scanAppKey(rows)
+		if err != nil {
+			return nil, err
+		}
+		keys = append(keys, k)
+	}
+	return keys, rows.Err()
+}
+
+// RotateAppKey retires the active key and installs the new one in a single
+// transaction, so there is no instant with zero or two active keys.
+func (s *Store) RotateAppKey(ctx context.Context, appID uuid.UUID, newKey store.AppKey, retiredAt time.Time) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("postgres: begin: %w", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // no-op after commit
+
+	tag, err := tx.Exec(ctx, `
+		UPDATE app_keys SET active = false, retired_at = $2
+		WHERE app_id = $1 AND active`,
+		appID, retiredAt)
+	if err != nil {
+		return fmt.Errorf("postgres: retire app key: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return store.ErrNotFound
+	}
+	if _, err := tx.Exec(ctx, insertAppKeySQL,
+		newKey.ID, newKey.AppID, newKey.PublicKey, newKey.PrivateKeyEnc, newKey.Active, newKey.CreatedAt, newKey.RetiredAt); err != nil {
+		return fmt.Errorf("postgres: insert rotated key: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("postgres: commit rotation: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) ListAllAppKeys(ctx context.Context) ([]store.AppKey, error) {
+	rows, err := s.pool.Query(ctx,
+		"SELECT "+appKeyColumns+" FROM app_keys ORDER BY app_id, created_at")
+	if err != nil {
+		return nil, fmt.Errorf("postgres: list all app keys: %w", err)
+	}
+	defer rows.Close()
+
+	keys := []store.AppKey{}
+	for rows.Next() {
+		k, err := scanAppKey(rows)
+		if err != nil {
+			return nil, err
+		}
+		keys = append(keys, k)
+	}
+	return keys, rows.Err()
+}
+
+func (s *Store) UpdateAppKeyCiphertext(ctx context.Context, id uuid.UUID, privateKeyEnc []byte) error {
+	tag, err := s.pool.Exec(ctx,
+		"UPDATE app_keys SET private_key_enc = $2 WHERE id = $1", id, privateKeyEnc)
+	if err != nil {
+		return fmt.Errorf("postgres: update app key ciphertext: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return store.ErrNotFound
+	}
+	return nil
 }
 
 // --- licenses ---
