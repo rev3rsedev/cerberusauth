@@ -25,6 +25,13 @@ PostgreSQL integration test, point `CERBERUS_TEST_DATABASE_URL` at a
   `go test ./...` must pass; CI checks all three. New behavior needs a
   test that fails without the change.
 
+## License of contributions
+
+By submitting a contribution you agree that it is licensed under this
+repository's license (Elastic License 2.0) and that the maintainer may
+later relicense the project, including your contribution. If you cannot
+agree to that, do not submit.
+
 ## Things that will not merge
 
 - Changes to the signing protocol invariants (clients verify exact
