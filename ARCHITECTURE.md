@@ -256,13 +256,16 @@ transit readable.
 
 ## Extension points (deliberately stubbed)
 
-- `TODO(v0.2)`: dashboard UI. Consumes the same admin API; no server changes anticipated.
+- Dashboard ships embedded (internal/dashboard): three static files over
+  the admin API, allowlist-served with a same-origin CSP, no build step.
+  CERBERUS_DASHBOARD=false removes it.
 - Go SDK ships in `client/`: verify-then-parse, nonce bookkeeping, skew
   correction learned from signed `stale_timestamp` verdicts, offline
   re-verification of cached envelopes. Standard library only, and it must
   never import `internal/` packages, so it can move to its own module if
   demand appears. `TODO(v0.2)`: C# SDK next, Rust maybe.
-- `TODO(v0.2)`: global rate limiting middleware (login already has its own per-IP limiter).
+- Client endpoints are rate limited per IP (CERBERUS_CLIENT_RATE_BURST);
+  Prometheus metrics ride a separate listener (CERBERUS_METRICS_ADDR).
 - Audit log ships in 0002_audit_log.sql (append-only, actor via request
   context); key rotation in 0003_app_keys.sql. Both were v0.2 stubs.
 - `TODO(v0.3)`: end-user accounts (KeyAuth-style user/pass per app), resellers, webhooks.

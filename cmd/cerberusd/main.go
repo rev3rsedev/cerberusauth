@@ -22,6 +22,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/rev3rsedev/cerberusauth/internal/config"
+	"github.com/rev3rsedev/cerberusauth/internal/dashboard"
 	"github.com/rev3rsedev/cerberusauth/internal/server"
 	"github.com/rev3rsedev/cerberusauth/internal/service"
 	"github.com/rev3rsedev/cerberusauth/internal/signing"
@@ -182,10 +183,14 @@ func runServe(log *slog.Logger) error {
 		}
 	}()
 
-	handler := server.New(svc, log,
+	serverOpts := []server.Option{
 		server.WithClientRateLimit(cfg.ClientRateBurst, cfg.ClientRateRefill),
 		server.WithMetrics(metrics),
-	).Handler()
+	}
+	if cfg.Dashboard {
+		serverOpts = append(serverOpts, server.WithDashboard(dashboard.Handler()))
+	}
+	handler := server.New(svc, log, serverOpts...).Handler()
 
 	srv := &http.Server{
 		Addr:              cfg.ListenAddr,

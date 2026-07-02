@@ -203,6 +203,15 @@ A signed "no" is a Verdict, not an error; an error means no trustworthy
 answer existed at all. The package docs cover the offline grace-period
 pattern built on `Verdict.Envelope` and `VerifyStored`.
 
+## Dashboard
+
+The binary embeds a small admin dashboard at `/`: log in, create apps,
+issue licenses (plaintext keys shown exactly once, with copy and
+download), ban/unban, reset device bindings, rotate signing keys, read
+the audit trail. Three static files, no build step, no CDN, no external
+requests; everything it does goes through the same bearer-authenticated
+admin API listed below. Set `CERBERUS_DASHBOARD=false` to turn it off.
+
 ## HTTP API
 
 ```
@@ -234,8 +243,9 @@ threat model live in [ARCHITECTURE.md](ARCHITECTURE.md).
 Everything is an environment variable. See [.env.example](.env.example) for
 the annotated list: `CERBERUS_DATABASE_URL`, `CERBERUS_MASTER_KEY`,
 `CERBERUS_LISTEN_ADDR`, `CERBERUS_CLOCK_SKEW`, `CERBERUS_ADMIN_TOKEN_TTL`,
-`CERBERUS_AUTO_MIGRATE`, `CERBERUS_BOOTSTRAP_ADMIN_EMAIL/_PASSWORD`,
-`CERBERUS_DEV_MODE`.
+`CERBERUS_AUTO_MIGRATE`, `CERBERUS_CLIENT_RATE_BURST/_REFILL`,
+`CERBERUS_METRICS_ADDR`, `CERBERUS_DASHBOARD`,
+`CERBERUS_BOOTSTRAP_ADMIN_EMAIL/_PASSWORD`, `CERBERUS_DEV_MODE`.
 
 ## Development
 

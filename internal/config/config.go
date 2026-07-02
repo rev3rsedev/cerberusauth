@@ -43,6 +43,11 @@ type Config struct {
 	// publicly; request rates and verdict mixes are operational data.
 	MetricsAddr string
 
+	// Dashboard serves the embedded admin UI at /. It is a static shell
+	// over the admin API and adds no capability the API lacks, so turning
+	// it off is purely cosmetic hardening.
+	Dashboard bool
+
 	// DevMode acknowledges a disposable sandbox: it is the only way the
 	// server will run with the published dev master key.
 	DevMode bool
@@ -109,6 +114,9 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("config: CERBERUS_CLIENT_RATE_BURST must be 0 (off) or positive")
 	}
 	if cfg.ClientRateRefill, err = envDuration("CERBERUS_CLIENT_RATE_REFILL", time.Second); err != nil {
+		return Config{}, err
+	}
+	if cfg.Dashboard, err = envBool("CERBERUS_DASHBOARD", true); err != nil {
 		return Config{}, err
 	}
 	return cfg, nil

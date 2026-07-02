@@ -22,6 +22,8 @@ type Server struct {
 	// metrics is nil unless observability is wired in; every use is
 	// nil-safe.
 	metrics *Metrics
+	// dashboard, when non-nil, serves the embedded admin UI at /.
+	dashboard http.Handler
 }
 
 // Option adjusts a Server at construction time.
@@ -41,6 +43,13 @@ func WithClientRateLimit(burst int, refillEvery time.Duration) Option {
 // Metrics endpoint itself is served elsewhere (its own listener).
 func WithMetrics(m *Metrics) Option {
 	return func(s *Server) { s.metrics = m }
+}
+
+// WithDashboard mounts the embedded admin UI on /, /app.js and /style.css.
+// Static shell only; everything it shows still goes through the
+// bearer-authenticated admin API.
+func WithDashboard(h http.Handler) Option {
+	return func(s *Server) { s.dashboard = h }
 }
 
 func New(svc *service.Service, log *slog.Logger, opts ...Option) *Server {
@@ -83,6 +92,14 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /v1/admin/licenses/{id}/unban", s.requireAdmin(s.handleUnbanLicense))
 	s.mux.HandleFunc("POST /v1/admin/licenses/{id}/reset-hwid", s.requireAdmin(s.handleResetHWID))
 	s.mux.HandleFunc("GET /v1/admin/audit", s.requireAdmin(s.handleListAudit))
+
+	// Dashboard: explicit GET routes only, so nothing under /v1 can ever
+	// fall through to a static file or vice versa.
+	if s.dashboard != nil {
+		s.mux.Handle("GET /{$}", s.dashboard)
+		s.mux.Handle("GET /app.js", s.dashboard)
+		s.mux.Handle("GET /style.css", s.dashboard)
+	}
 }
 
 // Handler returns the fully wrapped root handler.
