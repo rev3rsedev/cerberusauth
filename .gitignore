@@ -17,3 +17,7 @@ coverage.out
 
 # GoReleaser output
 dist/
+
+# .NET build output (sdk/csharp)
+obj/
+*.user

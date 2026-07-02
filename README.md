@@ -203,6 +203,15 @@ A signed "no" is a Verdict, not an error; an error means no trustworthy
 answer existed at all. The package docs cover the offline grace-period
 pattern built on `Verdict.Envelope` and `VerifyStored`.
 
+### C# SDK
+
+[sdk/csharp/](sdk/csharp/) is the same protocol for .NET: netstandard2.1
+(Unity, Mono) and net8.0, BouncyCastle for Ed25519, identical semantics
+(signed denials are verdicts, exceptions mean fail closed, skew
+self-correction, multi-key pinning for rotations). Its test suite
+includes a vector signed by the Go implementation, so the SDKs cannot
+drift apart silently.
+
 ## Dashboard
 
 The binary embeds a small admin dashboard at `/`: log in, create apps,
@@ -274,10 +283,11 @@ Contributions welcome; read [CONTRIBUTING.md](CONTRIBUTING.md) first.
 
 ## Roadmap
 
-- v0.2: dashboard UI, C# client SDK (the Go SDK ships in
-  [client/](client/)), global rate limiting (login is already limited),
-  audit log, key rotation, expired-token cleanup job.
-- v0.3: per-app end-user accounts, resellers, webhooks.
+- v1.0 (shipped in this tree): Go and C# SDKs, embedded dashboard, key
+  rotation with a leaked-key runbook, audit log, global rate limiting,
+  Prometheus metrics, token cleanup, release binaries and a ghcr.io
+  image.
+- Next: per-app end-user accounts, resellers, webhooks.
 
 Not planned: proprietary "pro" tiers, license servers you can't run
 yourself, features that only work against a hosted instance.

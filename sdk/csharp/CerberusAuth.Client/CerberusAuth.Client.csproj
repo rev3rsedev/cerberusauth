@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- netstandard2.1 covers Unity and Mono; net8.0 is the modern floor. -->
+    <TargetFrameworks>netstandard2.1;net8.0</TargetFrameworks>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <RootNamespace>CerberusAuth.Client</RootNamespace>
+    <PackageId>CerberusAuth.Client</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>zybu</Authors>
+    <Description>Client SDK for CerberusAuth: license validation with mandatory Ed25519 response verification, nonce replay protection and clock-skew correction.</Description>
+    <PackageLicenseExpression>Elastic-2.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/rev3rsedev/cerberusauth</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/rev3rsedev/cerberusauth</RepositoryUrl>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Doc comments cover the types that need explaining; do not demand
+         one on every trivial property. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The BCL has no Ed25519; BouncyCastle is the standard managed
+         implementation and keeps the SDK free of native binaries. -->
+    <PackageReference Include="BouncyCastle.Cryptography" Version="2.4.0" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+  </ItemGroup>
+
+</Project>
