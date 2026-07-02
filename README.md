@@ -1,14 +1,6 @@
 <div align="center">
 
-<pre>
-               _                                     _   _
-  ___ ___ _ __| |__   ___ _ __ _   _ ___  __ _ _   _| |_| |__
- / __/ _ \ '__| '_ \ / _ \ '__| | | / __|/ _` | | | | __| '_ \
-| (_|  __/ |  | |_) |  __/ |  | |_| \__ \ (_| | |_| | |_| | | |
- \___\___|_|  |_.__/ \___|_|   \__,_|___/\__,_|\__,_|\__|_| |_|
-</pre>
-
-**Self-hosted license keys and auth for the software you sell.**
+<img src=".github/banner.png" alt="CerberusAuth: self-hosted license keys and auth for the software you sell" width="830">
 
 *The open, trustworthy one.*
 
