@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: cerberus
+      POSTGRES_PASSWORD: cerberus
+      POSTGRES_DB: cerberus
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cerberus -d cerberus"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      CERBERUS_DATABASE_URL: postgres://cerberus:cerberus@db:5432/cerberus?sslmode=disable
+      # DEV KEY ONLY. For anything real: `make genkey`, put the result in .env
+      # or your secret store. See .env.example. The server refuses this
+      # published key unless CERBERUS_DEV_MODE=true, so a copy-pasted compose
+      # file cannot silently become a production deployment.
+      CERBERUS_MASTER_KEY: ${CERBERUS_MASTER_KEY:-MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=}
+      CERBERUS_DEV_MODE: ${CERBERUS_DEV_MODE:-true}
+      CERBERUS_AUTO_MIGRATE: "true"
+      CERBERUS_BOOTSTRAP_ADMIN_EMAIL: ${CERBERUS_BOOTSTRAP_ADMIN_EMAIL:-admin@example.com}
+      CERBERUS_BOOTSTRAP_ADMIN_PASSWORD: ${CERBERUS_BOOTSTRAP_ADMIN_PASSWORD:-change-me-please}
+
+volumes:
+  dbdata:

@@ -1,0 +1,19 @@
+# Binaries
+bin/
+*.exe
+*.test
+
+# Environment / secrets — never commit a real master key
+.env
+
+# Editor / OS noise
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Claude Code machine-local settings
+.claude/settings.local.json
+
+# Go tooling
+coverage.out

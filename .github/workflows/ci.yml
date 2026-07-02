@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        run: |
+          out=$(gofmt -l .)
+          if [ -n "$out" ]; then
+            echo "not gofmt-ed:" && echo "$out" && exit 1
+          fi
+      - name: go vet
+        run: go vet ./...
+      - name: go test
+        run: go test ./...
+
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: cerberus
+          POSTGRES_PASSWORD: cerberus
+          POSTGRES_DB: cerberus_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cerberus -d cerberus_test"
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 30
+    env:
+      CERBERUS_TEST_DATABASE_URL: postgres://cerberus:cerberus@localhost:5432/cerberus_test?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: store integration test
+        run: go test -v ./internal/store/postgres/
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: docker build
+        run: docker build .
