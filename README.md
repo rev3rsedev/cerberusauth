@@ -7,6 +7,7 @@
 [![CI](https://github.com/rev3rsedev/cerberusauth/actions/workflows/ci.yml/badge.svg)](https://github.com/rev3rsedev/cerberusauth/actions/workflows/ci.yml)
 [![License: Elastic 2.0](https://img.shields.io/badge/license-Elastic--2.0-blue.svg)](LICENSE)
 [![Go ≥1.25](https://img.shields.io/badge/go-%E2%89%A51.25-00ADD8.svg)](go.mod)
+[![Release](https://img.shields.io/github/v/release/rev3rsedev/cerberusauth)](https://github.com/rev3rsedev/cerberusauth/releases)
 
 [Quickstart](#quickstart) ·
 [How it works](#how-it-works) ·
@@ -101,17 +102,22 @@ Does NOT protect against:
   can sign anything.
 - Key sharing before first use. A key is a bearer credential until it
   binds to a HWID on first redemption.
-- Denial of service. Admin login is rate-limited per IP (it's the only
-  unauthenticated guessing surface), but nothing else is limited in v0.1
-  (global limiting is planned for v0.2), so put the server behind a
-  reverse proxy with limits. Note the login limiter keys on the TCP peer
-  address; behind a proxy it sees one IP, so use the proxy's limiter
-  there.
+- Denial of service. Admin login and the client endpoints are
+  rate-limited per IP (`CERBERUS_CLIENT_RATE_BURST/_REFILL`), which
+  stops key guessing but not a determined flood; put the server behind
+  a reverse proxy with limits for that. Note the built-in limiters key
+  on the TCP peer address; behind a proxy they see one IP, so use the
+  proxy's limiter there.
 - Eavesdropping. Signatures give integrity, not confidentiality. Run TLS
   (terminate at your proxy) or license keys and HWIDs cross the wire
   readable.
 
 ## Quickstart
+
+Every release ships prebuilt binaries (Linux, Windows, macOS, amd64 and
+arm64) on the [releases page](https://github.com/rev3rsedev/cerberusauth/releases)
+and a container image at `ghcr.io/rev3rsedev/cerberusauth`. The fastest
+full setup (server plus Postgres) is the compose file:
 
 ```sh
 git clone https://github.com/rev3rsedev/cerberusauth
@@ -283,8 +289,8 @@ Contributions welcome; read [CONTRIBUTING.md](CONTRIBUTING.md) first.
 
 ## Roadmap
 
-- v1.0 (shipped in this tree): Go and C# SDKs, embedded dashboard, key
-  rotation with a leaked-key runbook, audit log, global rate limiting,
+- v1.0.0 (current): Go and C# SDKs, embedded dashboard, key rotation
+  with a leaked-key runbook, audit log, global rate limiting,
   Prometheus metrics, token cleanup, release binaries and a ghcr.io
   image.
 - Next: per-app end-user accounts, resellers, webhooks.
