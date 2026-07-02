@@ -96,7 +96,8 @@ Docker Desktop is NOT installed. Repo is NOT git-initialized yet.
   internal/store/postgres/postgres_test.go, gated on
   CERBERUS_TEST_DATABASE_URL, truncates tables, covers CRUD + redeem race
   semantics + expired-token sweep. CI integration job runs it.
-- [ ] README badges (CI, license, Go version) once CI exists.
+- [x] README badges (CI, license, Go version) — DONE 2026-07-02. CI badge
+  goes live after first push to GitHub.
 - [ ] GitHub release notes for v0.1.0.
 
 ## Context that survives the chat

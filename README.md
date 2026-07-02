@@ -1,5 +1,9 @@
 # CerberusAuth
 
+[![CI](https://github.com/rev3rsedev/cerberusauth/actions/workflows/ci.yml/badge.svg)](https://github.com/rev3rsedev/cerberusauth/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Go ≥1.25](https://img.shields.io/badge/go-%E2%89%A51.25-00ADD8.svg)](go.mod)
+
 **The open, trustworthy one.**
 
 A self-hostable authentication and software-licensing platform — a modern,
