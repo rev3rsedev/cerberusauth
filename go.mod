@@ -1,4 +1,4 @@
-module github.com/cerberusauth/cerberusauth
+module github.com/rev3rsedev/cerberusauth
 
 go 1.25.0
 

@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cerberusauth/cerberusauth/internal/server"
-	"github.com/cerberusauth/cerberusauth/internal/service"
-	"github.com/cerberusauth/cerberusauth/internal/store/storetest"
+	"github.com/rev3rsedev/cerberusauth/internal/server"
+	"github.com/rev3rsedev/cerberusauth/internal/service"
+	"github.com/rev3rsedev/cerberusauth/internal/store/storetest"
 )
 
 type env struct {

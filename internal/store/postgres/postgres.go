@@ -15,7 +15,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/cerberusauth/cerberusauth/internal/store"
+	"github.com/rev3rsedev/cerberusauth/internal/store"
 )
 
 type Store struct {

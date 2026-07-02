@@ -3,7 +3,7 @@ package config
 import (
 	"testing"
 
-	"github.com/cerberusauth/cerberusauth/internal/signing"
+	"github.com/rev3rsedev/cerberusauth/internal/signing"
 )
 
 func TestMasterKeyIsDevKey(t *testing.T) {

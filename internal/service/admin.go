@@ -9,10 +9,10 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/cerberusauth/cerberusauth/internal/auth"
-	"github.com/cerberusauth/cerberusauth/internal/license"
-	"github.com/cerberusauth/cerberusauth/internal/signing"
-	"github.com/cerberusauth/cerberusauth/internal/store"
+	"github.com/rev3rsedev/cerberusauth/internal/auth"
+	"github.com/rev3rsedev/cerberusauth/internal/license"
+	"github.com/rev3rsedev/cerberusauth/internal/signing"
+	"github.com/rev3rsedev/cerberusauth/internal/store"
 )
 
 // CreateApplication provisions a tenant: generates its Ed25519 keypair and

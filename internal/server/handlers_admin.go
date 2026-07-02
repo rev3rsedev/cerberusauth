@@ -10,8 +10,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/cerberusauth/cerberusauth/internal/signing"
-	"github.com/cerberusauth/cerberusauth/internal/store"
+	"github.com/rev3rsedev/cerberusauth/internal/signing"
+	"github.com/rev3rsedev/cerberusauth/internal/store"
 )
 
 // --- wire shapes (no key hashes, no private keys, no plaintext emails) ---

@@ -11,9 +11,9 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/cerberusauth/cerberusauth/internal/service"
-	"github.com/cerberusauth/cerberusauth/internal/store"
-	"github.com/cerberusauth/cerberusauth/internal/store/storetest"
+	"github.com/rev3rsedev/cerberusauth/internal/service"
+	"github.com/rev3rsedev/cerberusauth/internal/store"
+	"github.com/rev3rsedev/cerberusauth/internal/store/storetest"
 )
 
 // wellFormedUnknownKey passes canonicalization but is not in the store.

@@ -13,7 +13,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/cerberusauth/cerberusauth/internal/store"
+	"github.com/rev3rsedev/cerberusauth/internal/store"
 )
 
 type FakeStore struct {

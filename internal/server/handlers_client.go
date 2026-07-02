@@ -7,8 +7,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/cerberusauth/cerberusauth/internal/service"
-	"github.com/cerberusauth/cerberusauth/internal/signing"
+	"github.com/rev3rsedev/cerberusauth/internal/service"
+	"github.com/rev3rsedev/cerberusauth/internal/signing"
 )
 
 type clientRequest struct {

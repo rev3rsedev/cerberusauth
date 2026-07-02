@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/cerberusauth/cerberusauth/internal/signing"
+	"github.com/rev3rsedev/cerberusauth/internal/signing"
 )
 
 type Config struct {

@@ -7,7 +7,7 @@ import (
 
 	"crypto/ed25519"
 
-	"github.com/cerberusauth/cerberusauth/internal/signing"
+	"github.com/rev3rsedev/cerberusauth/internal/signing"
 )
 
 // Failure reasons carried in signed payloads. Stable strings — clients

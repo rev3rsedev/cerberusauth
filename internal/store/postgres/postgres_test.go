@@ -10,8 +10,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/cerberusauth/cerberusauth/internal/store"
-	"github.com/cerberusauth/cerberusauth/internal/store/postgres"
+	"github.com/rev3rsedev/cerberusauth/internal/store"
+	"github.com/rev3rsedev/cerberusauth/internal/store/postgres"
 )
 
 // TestStoreIntegration exercises the real SQL against a live PostgreSQL —

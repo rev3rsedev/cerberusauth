@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cerberusauth/cerberusauth/internal/service"
+	"github.com/rev3rsedev/cerberusauth/internal/service"
 )
 
 // withRecover turns panics into 500s instead of dropped connections.

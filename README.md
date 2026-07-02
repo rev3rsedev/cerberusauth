@@ -60,7 +60,7 @@ Honesty is the differentiator, so here it is.
 ## Quickstart
 
 ```sh
-git clone https://github.com/cerberusauth/cerberusauth
+git clone https://github.com/rev3rsedev/cerberusauth
 cd cerberusauth
 docker compose up --build
 ```

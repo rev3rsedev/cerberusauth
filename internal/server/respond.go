@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/cerberusauth/cerberusauth/internal/service"
+	"github.com/rev3rsedev/cerberusauth/internal/service"
 )
 
 func (s *Server) writeJSON(w http.ResponseWriter, code int, v any) {

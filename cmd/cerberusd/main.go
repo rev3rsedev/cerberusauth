@@ -20,11 +20,11 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/cerberusauth/cerberusauth/internal/config"
-	"github.com/cerberusauth/cerberusauth/internal/server"
-	"github.com/cerberusauth/cerberusauth/internal/service"
-	"github.com/cerberusauth/cerberusauth/internal/signing"
-	"github.com/cerberusauth/cerberusauth/internal/store/postgres"
+	"github.com/rev3rsedev/cerberusauth/internal/config"
+	"github.com/rev3rsedev/cerberusauth/internal/server"
+	"github.com/rev3rsedev/cerberusauth/internal/service"
+	"github.com/rev3rsedev/cerberusauth/internal/signing"
+	"github.com/rev3rsedev/cerberusauth/internal/store/postgres"
 )
 
 func main() {

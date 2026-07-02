@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/cerberusauth/cerberusauth/internal/service"
+	"github.com/rev3rsedev/cerberusauth/internal/service"
 )
 
 type Server struct {

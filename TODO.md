@@ -12,19 +12,33 @@ Docker Desktop is NOT installed. Repo is NOT git-initialized yet.
 
 ## Blockers — do these before the repo goes public
 
-- [ ] **1. Pick the GitHub org/repo name** *(user decision — everything in
-  item 2 waits on it)*. Check availability of the GitHub org AND search for
-  trademark/name collisions on "CerberusAuth" before committing.
+- [x] **1. GitHub home DECIDED 2026-07-02: personal account —
+  `github.com/rev3rsedev/cerberusauth`.** Research that informed it:
+  - GitHub orgs `cerberusauth` AND `cerberus-auth` are TAKEN (both private,
+    zero public repos — squatted/dormant; verified via API, org id
+    110757349 for the first).
+  - Free handles checked: `cerberuslicensing`, `cerberus-licensing`,
+    `getcerberus`, `cerberuskey`, `cerberus-keys`. Taken: `cerberusd`.
+  - Name space is crowded: Nike-Inc/cerberus (secure property store with
+    auth), nefarioustim/cerberus-auth (Python auth microservice),
+    snapp-incubator/Cerberus (Envoy auth), pyeve/cerberus (validation),
+    Cerberus FTP Server (commercial, Redwood). USPTO has multiple live
+    CERBERUS registrations incl. Searchlight Cyber LLC #7363526
+    (cybersecurity software, reg. 2024) — closest adjacency for a
+    security-positioned project. Not legal advice; renaming is cheapest
+    right now if wanted (module rename pending anyway).
+  - Options: (a) personal account `github.com/<you>/cerberusauth`;
+    (b) keep product name, free org like `getcerberus`;
+    (c) rename project entirely.
 
-- [ ] **2. Rename the module path** from the placeholder
-  `github.com/cerberusauth/cerberusauth` to the real path. Touch points:
-  `go.mod` line 1, every internal import (find/replace, ~20 files),
-  the `git clone` URL in README.md Quickstart. Then `go build ./... && go test ./...`.
+- [x] **2. Module path renamed — DONE 2026-07-02** to
+  `github.com/rev3rsedev/cerberusauth`: go.mod, 16 .go files, README clone
+  URL. Build + tests green after.
 
-- [ ] **3. git init + initial commit.** `.gitignore` already exists (bin/,
-  .env). Consider adding `.gitattributes` with `* text=auto eol=lf` first —
-  repo was authored on Windows; avoid CRLF churn for contributors. Tag
-  `v0.1.0` after the public push, not before.
+- [x] **3. git init + initial commit — DONE 2026-07-02.** `.gitattributes`
+  (`* text=auto eol=lf`) added first, `.claude/settings.local.json`
+  ignored, `git init -b main`, root commit e64041b (44 files). Tag
+  `v0.1.0` after the public push, not before — still open.
 
 - [ ] **4. Verify the Docker quickstart actually works.** README promises
   `docker compose up --build` → running instance. Never tested — Docker
