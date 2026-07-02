@@ -41,6 +41,9 @@ license your own commercial software, all free. What you can't do is
 take CerberusAuth itself and sell it to other people as a product or
 hosted service. I'm giving it away; nobody else gets to charge for it.
 
+There's no marketing behind this, it grows by word of mouth. If it's
+useful to you, a star helps other people find it.
+
 ## How it works
 
 The classic crack for a license check never touches your server: point
