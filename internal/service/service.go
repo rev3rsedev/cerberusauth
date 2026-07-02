@@ -36,6 +36,7 @@ type Service struct {
 	now         func() time.Time
 	clockSkew   time.Duration
 	tokenTTL    time.Duration
+	onVerdict   func(endpoint, result string)
 }
 
 type Options struct {
@@ -43,6 +44,10 @@ type Options struct {
 	ClockSkew time.Duration // default 5m
 	TokenTTL  time.Duration // default 24h
 	Now       func() time.Time
+	// OnVerdict, when set, observes every signed decision: endpoint is
+	// "validate" or "redeem", result is "valid" or the failure reason.
+	// Wired to metrics in production; must not block.
+	OnVerdict func(endpoint, result string)
 }
 
 func New(st store.Store, opts Options) *Service {
@@ -51,6 +56,7 @@ func New(st store.Store, opts Options) *Service {
 		now:       opts.Now,
 		clockSkew: opts.ClockSkew,
 		tokenTTL:  opts.TokenTTL,
+		onVerdict: opts.OnVerdict,
 	}
 	// An absent or malformed master key leaves the derived keys nil, and
 	// key-touching operations fail at call time. config.Load already
@@ -94,6 +100,7 @@ func (s *Service) Validate(ctx context.Context, req ValidationRequest) (SignedRe
 		return SignedResponse{}, err
 	}
 	if early != nil {
+		s.observeVerdict("validate", p)
 		return *early, nil
 	}
 
@@ -115,7 +122,11 @@ func (s *Service) Validate(ctx context.Context, req ValidationRequest) (SignedRe
 			p.Reason = ReasonHWIDMismatch
 		}
 	}
-	return s.signPayload(ctx, app.ID, p)
+	resp, err := s.signPayload(ctx, app.ID, p)
+	if err == nil {
+		s.observeVerdict("validate", p)
+	}
+	return resp, err
 }
 
 // Redeem activates an issued license: binds the device and starts the
@@ -128,6 +139,7 @@ func (s *Service) Redeem(ctx context.Context, req ValidationRequest) (SignedResp
 		return SignedResponse{}, err
 	}
 	if early != nil {
+		s.observeVerdict("redeem", p)
 		return *early, nil
 	}
 
@@ -180,7 +192,24 @@ func (s *Service) Redeem(ctx context.Context, req ValidationRequest) (SignedResp
 			return SignedResponse{}, err
 		}
 	}
-	return s.signPayload(ctx, app.ID, p)
+	resp, err := s.signPayload(ctx, app.ID, p)
+	if err == nil {
+		s.observeVerdict("redeem", p)
+	}
+	return resp, err
+}
+
+// observeVerdict feeds the OnVerdict hook, folding a payload into the
+// "valid" / reason vocabulary the metrics use.
+func (s *Service) observeVerdict(endpoint string, p Payload) {
+	if s.onVerdict == nil {
+		return
+	}
+	result := p.Reason
+	if p.Valid {
+		result = "valid"
+	}
+	s.onVerdict(endpoint, result)
 }
 
 // resolve performs the steps shared by Validate and Redeem: app lookup,

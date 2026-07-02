@@ -19,6 +19,9 @@ type Server struct {
 	// clientLimiter guards the client endpoints; nil disables the gate
 	// (rate-limit at the proxy in that topology).
 	clientLimiter *ipLimiter
+	// metrics is nil unless observability is wired in; every use is
+	// nil-safe.
+	metrics *Metrics
 }
 
 // Option adjusts a Server at construction time.
@@ -32,6 +35,12 @@ func WithClientRateLimit(burst int, refillEvery time.Duration) Option {
 			s.clientLimiter = newIPLimiter(burst, refillEvery, nil)
 		}
 	}
+}
+
+// WithMetrics wires request observation into the middleware stack. The
+// Metrics endpoint itself is served elsewhere (its own listener).
+func WithMetrics(m *Metrics) Option {
+	return func(s *Server) { s.metrics = m }
 }
 
 func New(svc *service.Service, log *slog.Logger, opts ...Option) *Server {

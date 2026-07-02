@@ -4,6 +4,7 @@
 //	cerberusd migrate       apply pending database migrations and exit
 //	cerberusd create-admin  create an admin user (-email, -password)
 //	cerberusd genkey        print a fresh CERBERUS_MASTER_KEY and exit
+//	cerberusd rekey         re-encrypt app keys under a new master key
 package main
 
 import (
@@ -26,6 +27,10 @@ import (
 	"github.com/rev3rsedev/cerberusauth/internal/signing"
 	"github.com/rev3rsedev/cerberusauth/internal/store/postgres"
 )
+
+// version is stamped by the release build (-ldflags "-X main.version=...");
+// source builds report dev.
+var version = "dev"
 
 func main() {
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
@@ -137,10 +142,13 @@ func runServe(log *slog.Logger) error {
 		log.Info("migrations applied", "count", n)
 	}
 
+	metrics := server.NewMetrics(version)
+
 	svc := service.New(postgres.New(pool), service.Options{
 		MasterKey: cfg.MasterKey,
 		ClockSkew: cfg.ClockSkew,
 		TokenTTL:  cfg.TokenTTL,
+		OnVerdict: metrics.ObserveVerdict,
 	})
 
 	if cfg.BootstrapAdminEmail != "" && cfg.BootstrapAdminPassword != "" {
@@ -176,6 +184,7 @@ func runServe(log *slog.Logger) error {
 
 	handler := server.New(svc, log,
 		server.WithClientRateLimit(cfg.ClientRateBurst, cfg.ClientRateRefill),
+		server.WithMetrics(metrics),
 	).Handler()
 
 	srv := &http.Server{
@@ -193,6 +202,24 @@ func runServe(log *slog.Logger) error {
 		errCh <- srv.ListenAndServe()
 	}()
 
+	// Metrics get their own listener so they never ride the public port.
+	var metricsSrv *http.Server
+	if cfg.MetricsAddr != "" {
+		mux := http.NewServeMux()
+		mux.Handle("GET /metrics", metrics)
+		metricsSrv = &http.Server{
+			Addr:              cfg.MetricsAddr,
+			Handler:           mux,
+			ReadHeaderTimeout: 5 * time.Second,
+		}
+		go func() {
+			log.Info("metrics listening", "addr", cfg.MetricsAddr)
+			if err := metricsSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				errCh <- err
+			}
+		}()
+	}
+
 	select {
 	case err := <-errCh:
 		return err
@@ -200,6 +227,9 @@ func runServe(log *slog.Logger) error {
 		log.Info("shutting down")
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
+		if metricsSrv != nil {
+			_ = metricsSrv.Shutdown(shutdownCtx)
+		}
 		return srv.Shutdown(shutdownCtx)
 	}
 }

@@ -22,18 +22,21 @@ func (s *Server) withRecover(next http.Handler) http.Handler {
 	})
 }
 
-// withLogging logs one line per request. Never bodies and never query
-// strings: request bodies carry license keys and credentials.
+// withLogging logs one line per request and feeds the metrics. Never
+// bodies and never query strings: request bodies carry license keys and
+// credentials.
 func (s *Server) withLogging(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rec, r)
+		dur := time.Since(start)
+		s.metrics.ObserveRequest(r.URL.Path, rec.status, dur)
 		s.log.Info("http",
 			"method", r.Method,
 			"path", r.URL.Path,
 			"status", rec.status,
-			"dur_ms", time.Since(start).Milliseconds(),
+			"dur_ms", dur.Milliseconds(),
 		)
 	})
 }

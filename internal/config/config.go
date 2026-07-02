@@ -38,6 +38,11 @@ type Config struct {
 	ClientRateBurst  int
 	ClientRateRefill time.Duration
 
+	// MetricsAddr, when set, serves Prometheus metrics on its own listener
+	// (e.g. "127.0.0.1:9090"). Empty disables metrics. Never expose it
+	// publicly; request rates and verdict mixes are operational data.
+	MetricsAddr string
+
 	// DevMode acknowledges a disposable sandbox: it is the only way the
 	// server will run with the published dev master key.
 	DevMode bool
@@ -67,6 +72,7 @@ func Load() (Config, error) {
 	cfg := Config{
 		DatabaseURL:            os.Getenv("CERBERUS_DATABASE_URL"),
 		ListenAddr:             envOr("CERBERUS_LISTEN_ADDR", ":8080"),
+		MetricsAddr:            os.Getenv("CERBERUS_METRICS_ADDR"),
 		BootstrapAdminEmail:    os.Getenv("CERBERUS_BOOTSTRAP_ADMIN_EMAIL"),
 		BootstrapAdminPassword: os.Getenv("CERBERUS_BOOTSTRAP_ADMIN_PASSWORD"),
 	}
