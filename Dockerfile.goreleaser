@@ -1,0 +1,7 @@
+# Used only by GoReleaser, which injects the prebuilt binary instead of
+# compiling in-image (that is what the main Dockerfile is for).
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY cerberusd /cerberusd
+EXPOSE 8080
+ENTRYPOINT ["/cerberusd"]
+CMD ["serve"]
