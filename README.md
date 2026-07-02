@@ -181,6 +181,19 @@ Three layers, cheapest first:
 Not planned, ever: proprietary "pro" tiers, license servers you can't run
 yourself, features that only work against a hosted instance.
 
+## Credits
+
+```text
+             _
+ ____ _   _ | |__   _   _
+|_  /| | | || '_ \ | | | |
+ / / | |_| || |_) || |_| |
+/___| \__, ||_.__/  \__,_|
+      |___/
+```
+
+Built by [zybu](https://github.com/rev3rsedev) — rev3rsedev.
+
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE).
