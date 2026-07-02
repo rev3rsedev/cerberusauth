@@ -13,7 +13,7 @@
 *The open, trustworthy one.*
 
 [![CI](https://github.com/rev3rsedev/cerberusauth/actions/workflows/ci.yml/badge.svg)](https://github.com/rev3rsedev/cerberusauth/actions/workflows/ci.yml)
-[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 [![Go ≥1.25](https://img.shields.io/badge/go-%E2%89%A51.25-00ADD8.svg)](go.mod)
 
 [Quickstart](#quickstart) ·
@@ -33,9 +33,12 @@ schedule, bans them on chargeback, and answers your app's "is this key
 valid?" call at startup with a response that can't be faked on the
 network.
 
-It's built as an open alternative to KeyAuth: Apache-2.0, one Go binary
+It's built as an open alternative to KeyAuth: AGPL-3.0, one Go binary
 plus PostgreSQL, and self-hosting is the only mode. No paid tiers, no
-gated features, no phone-home.
+gated features, no phone-home. The license means you can run, modify,
+and self-host it freely (commercial use included), but anyone who
+redistributes it or offers it as a service has to publish their source
+under the same terms. Nobody gets to close it up and sell it as theirs.
 
 ## How it works
 
@@ -255,4 +258,12 @@ Built by [zybu](https://github.com/rev3rsedev) — rev3rsedev.
 
 ## License
 
-Apache-2.0. See [LICENSE](LICENSE).
+AGPL-3.0. See [LICENSE](LICENSE).
+
+Copyright (C) 2026 zybu
+
+Free to use, self-host, and modify, including for commercial products.
+If you distribute a modified version, or run one as a network service
+for others, you must make its source available under the AGPL. Closing
+the source and selling it as your own is exactly what this license
+forbids.
