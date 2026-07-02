@@ -13,7 +13,7 @@
 *The open, trustworthy one.*
 
 [![CI](https://github.com/rev3rsedev/cerberusauth/actions/workflows/ci.yml/badge.svg)](https://github.com/rev3rsedev/cerberusauth/actions/workflows/ci.yml)
-[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
+[![License: Elastic 2.0](https://img.shields.io/badge/license-Elastic--2.0-blue.svg)](LICENSE)
 [![Go ≥1.25](https://img.shields.io/badge/go-%E2%89%A51.25-00ADD8.svg)](go.mod)
 
 [Quickstart](#quickstart) ·
@@ -33,12 +33,13 @@ schedule, bans them on chargeback, and answers your app's "is this key
 valid?" call at startup with a response that can't be faked on the
 network.
 
-It's built as an open alternative to KeyAuth: AGPL-3.0, one Go binary
-plus PostgreSQL, and self-hosting is the only mode. No paid tiers, no
-gated features, no phone-home. The license means you can run, modify,
-and self-host it freely (commercial use included), but anyone who
-redistributes it or offers it as a service has to publish their source
-under the same terms. Nobody gets to close it up and sell it as theirs.
+It's built as a free, source-available alternative to KeyAuth: one Go
+binary plus PostgreSQL, and self-hosting is the only mode. No paid
+tiers, no gated features, no phone-home. The license
+([Elastic 2.0](LICENSE)) is simple: run it, modify it, use it to
+license your own commercial software, all free. What you can't do is
+take CerberusAuth itself and sell it to other people as a product or
+hosted service. I'm giving it away; nobody else gets to charge for it.
 
 ## How it works
 
@@ -258,12 +259,18 @@ Built by [zybu](https://github.com/rev3rsedev) — rev3rsedev.
 
 ## License
 
-AGPL-3.0. See [LICENSE](LICENSE).
+[Elastic License 2.0](LICENSE). Copyright (C) 2026 zybu.
 
-Copyright (C) 2026 zybu
+What that means in practice:
 
-Free to use, self-host, and modify, including for commercial products.
-If you distribute a modified version, or run one as a network service
-for others, you must make its source available under the AGPL. Closing
-the source and selling it as your own is exactly what this license
-forbids.
+- Use, self-host, and modify it freely, commercial use included.
+  Licensing your own paid software with it is the intended use.
+- You may not provide CerberusAuth to third parties as a hosted or
+  managed service.
+- You may not remove or alter the license and copyright notices, so a
+  rebranded copy stays traceable to this repo.
+
+This summary is informal; the [LICENSE](LICENSE) text is the authority.
+It's source-available rather than OSI-approved open source: the code is
+all here to read, audit, and run, but reselling it is withheld on
+purpose.

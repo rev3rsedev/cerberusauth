@@ -19,7 +19,7 @@ description of a real weakness is welcome too.
 
 ## What to expect
 
-This is a small open-source project, not a security team with a pager.
+This is a small one-person project, not a security team with a pager.
 Commitments:
 
 - **Acknowledgment within 7 days.**
