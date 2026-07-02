@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.0.1 - 2026-07-02
+
+- Build with Go 1.26.4 (`toolchain` directive in go.mod). The v1.0.0
+  binaries were built with Go 1.25.0, which carries known standard
+  library vulnerabilities fixed upstream, so that release was pulled
+  minutes after publication and never distributed. No code changes.
+- README: install options for release binaries and the ghcr.io image,
+  rate-limiting notes brought up to date.
+
 ## v1.0.0 - 2026-07-02
 
 First stable release.
