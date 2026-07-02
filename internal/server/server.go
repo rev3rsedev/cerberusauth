@@ -6,6 +6,7 @@ package server
 import (
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/rev3rsedev/cerberusauth/internal/service"
 )
@@ -15,14 +16,33 @@ type Server struct {
 	log          *slog.Logger
 	mux          *http.ServeMux
 	loginLimiter *ipLimiter
+	// clientLimiter guards the client endpoints; nil disables the gate
+	// (rate-limit at the proxy in that topology).
+	clientLimiter *ipLimiter
 }
 
-func New(svc *service.Service, log *slog.Logger) *Server {
+// Option adjusts a Server at construction time.
+type Option func(*Server)
+
+// WithClientRateLimit enables the per-IP limiter on the client endpoints.
+// A burst of 0 disables it.
+func WithClientRateLimit(burst int, refillEvery time.Duration) Option {
+	return func(s *Server) {
+		if burst > 0 && refillEvery > 0 {
+			s.clientLimiter = newIPLimiter(burst, refillEvery, nil)
+		}
+	}
+}
+
+func New(svc *service.Service, log *slog.Logger, opts ...Option) *Server {
 	s := &Server{
 		svc:          svc,
 		log:          log,
 		mux:          http.NewServeMux(),
 		loginLimiter: newIPLimiter(loginBurst, loginRefillEvery, nil),
+	}
+	for _, o := range opts {
+		o(s)
 	}
 	s.routes()
 	return s
@@ -32,10 +52,11 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /healthz", s.handleHealthz)
 
 	// Client endpoints: the license key is the credential; outcomes about
-	// the license are always HTTP 200 with a signed payload.
-	s.mux.HandleFunc("POST /v1/client/redeem", s.handleClientCall(s.svc.Redeem))
-	s.mux.HandleFunc("POST /v1/client/validate", s.handleClientCall(s.svc.Validate))
-	s.mux.HandleFunc("GET /v1/client/apps/{app_id}/pubkey", s.handlePubkey)
+	// the license are always HTTP 200 with a signed payload. The per-IP
+	// limiter caps flooding; a 429 is a transport error, never a verdict.
+	s.mux.HandleFunc("POST /v1/client/redeem", s.withClientRateLimit(s.handleClientCall(s.svc.Redeem)))
+	s.mux.HandleFunc("POST /v1/client/validate", s.withClientRateLimit(s.handleClientCall(s.svc.Validate)))
+	s.mux.HandleFunc("GET /v1/client/apps/{app_id}/pubkey", s.withClientRateLimit(s.handlePubkey))
 
 	// Admin endpoints: bearer token except login, which is rate-limited
 	// per IP instead (it is the only unauthenticated guessing surface).
@@ -54,8 +75,6 @@ func (s *Server) routes() {
 
 // Handler returns the fully wrapped root handler.
 func (s *Server) Handler() http.Handler {
-	// TODO(v0.2): global rate limiting slots in here, before logging.
-	// Login already has its own per-IP limiter (ratelimit.go).
 	return s.withRecover(s.withLogging(s.mux))
 }
 

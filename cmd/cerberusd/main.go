@@ -150,9 +150,13 @@ func runServe(log *slog.Logger) error {
 		}
 	}
 
+	handler := server.New(svc, log,
+		server.WithClientRateLimit(cfg.ClientRateBurst, cfg.ClientRateRefill),
+	).Handler()
+
 	srv := &http.Server{
 		Addr:              cfg.ListenAddr,
-		Handler:           server.New(svc, log).Handler(),
+		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,

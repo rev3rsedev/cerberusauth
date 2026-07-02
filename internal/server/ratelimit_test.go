@@ -1,7 +1,10 @@
 package server
 
 import (
+	"io"
+	"log/slog"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 )
@@ -72,6 +75,64 @@ func TestIPLimiterSweepDropsIdleBuckets(t *testing.T) {
 	}
 	if l.buckets["9.9.9.9"] == nil {
 		t.Fatal("sweep evicted the fresh bucket")
+	}
+}
+
+func TestClientRateLimitMiddleware(t *testing.T) {
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	s := New(nil, log, WithClientRateLimit(2, time.Minute))
+
+	called := 0
+	h := s.withClientRateLimit(func(w http.ResponseWriter, r *http.Request) { called++ })
+	post := func(ip string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodPost, "/v1/client/validate", nil)
+		req.RemoteAddr = ip + ":4444"
+		rr := httptest.NewRecorder()
+		h(rr, req)
+		return rr
+	}
+
+	for i := 0; i < 2; i++ {
+		if rr := post("10.0.0.1"); rr.Code != http.StatusOK {
+			t.Fatalf("request %d within burst: HTTP %d", i+1, rr.Code)
+		}
+	}
+	rr := post("10.0.0.1")
+	if rr.Code != http.StatusTooManyRequests {
+		t.Fatalf("over burst: HTTP %d, want 429", rr.Code)
+	}
+	if rr.Header().Get("Retry-After") == "" {
+		t.Error("429 without Retry-After")
+	}
+	if called != 2 {
+		t.Errorf("handler ran %d times, want 2", called)
+	}
+
+	// Another IP has its own bucket.
+	if rr := post("10.0.0.2"); rr.Code != http.StatusOK {
+		t.Fatalf("distinct IP limited: HTTP %d", rr.Code)
+	}
+}
+
+func TestClientRateLimitDisabled(t *testing.T) {
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	for name, s := range map[string]*Server{
+		"no option":  New(nil, log),
+		"burst zero": New(nil, log, WithClientRateLimit(0, time.Second)),
+	} {
+		if s.clientLimiter != nil {
+			t.Fatalf("%s: limiter unexpectedly enabled", name)
+		}
+		h := s.withClientRateLimit(func(w http.ResponseWriter, r *http.Request) {})
+		req := httptest.NewRequest(http.MethodPost, "/v1/client/validate", nil)
+		req.RemoteAddr = "10.0.0.1:4444"
+		for i := 0; i < 100; i++ {
+			rr := httptest.NewRecorder()
+			h(rr, req)
+			if rr.Code != http.StatusOK {
+				t.Fatalf("%s: request %d: HTTP %d", name, i+1, rr.Code)
+			}
+		}
 	}
 }
 

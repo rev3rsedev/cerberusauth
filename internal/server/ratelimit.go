@@ -93,22 +93,35 @@ func (l *ipLimiter) sweep(now time.Time) {
 	}
 }
 
-// withLoginRateLimit gates a handler behind the per-IP login limiter,
-// answering 429 with a Retry-After when the bucket is empty.
-func (s *Server) withLoginRateLimit(next http.HandlerFunc) http.HandlerFunc {
+// withRateLimit gates a handler behind a per-IP limiter, answering 429
+// with a Retry-After when the bucket is empty. A nil limiter means the
+// gate is disabled. The 429 is unsigned on purpose: like every transport
+// error it is not a license verdict, and clients fail closed on it.
+func (s *Server) withRateLimit(l *ipLimiter, msg string, next http.HandlerFunc) http.HandlerFunc {
+	if l == nil {
+		return next
+	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		ok, retryAfter := s.loginLimiter.allow(clientIP(r))
+		ok, retryAfter := l.allow(clientIP(r))
 		if !ok {
 			secs := int(math.Ceil(retryAfter.Seconds()))
 			if secs < 1 {
 				secs = 1
 			}
 			w.Header().Set("Retry-After", strconv.Itoa(secs))
-			s.writeError(w, http.StatusTooManyRequests, "too many login attempts, retry later")
+			s.writeError(w, http.StatusTooManyRequests, msg)
 			return
 		}
 		next(w, r)
 	}
+}
+
+func (s *Server) withLoginRateLimit(next http.HandlerFunc) http.HandlerFunc {
+	return s.withRateLimit(s.loginLimiter, "too many login attempts, retry later", next)
+}
+
+func (s *Server) withClientRateLimit(next http.HandlerFunc) http.HandlerFunc {
+	return s.withRateLimit(s.clientLimiter, "too many requests, retry later", next)
 }
 
 // clientIP keys the limiter by the TCP peer address. Deliberately not

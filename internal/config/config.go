@@ -28,6 +28,16 @@ type Config struct {
 	TokenTTL    time.Duration
 	AutoMigrate bool
 
+	// ClientRateBurst / ClientRateRefill shape the per-IP token bucket on
+	// the client endpoints: anti-flood, not anti-usage. A legit client
+	// validates once per program start, so the default 60-attempt burst
+	// refilling one per second is invisible to real users (including a NAT
+	// full of them) while capping what one IP can throw at the signing
+	// path. Burst 0 disables the limiter (rate-limit at the proxy in that
+	// topology).
+	ClientRateBurst  int
+	ClientRateRefill time.Duration
+
 	// DevMode acknowledges a disposable sandbox: it is the only way the
 	// server will run with the published dev master key.
 	DevMode bool
@@ -86,6 +96,15 @@ func Load() (Config, error) {
 	if cfg.DevMode, err = envBool("CERBERUS_DEV_MODE", false); err != nil {
 		return Config{}, err
 	}
+	if cfg.ClientRateBurst, err = envInt("CERBERUS_CLIENT_RATE_BURST", 60); err != nil {
+		return Config{}, err
+	}
+	if cfg.ClientRateBurst < 0 {
+		return Config{}, fmt.Errorf("config: CERBERUS_CLIENT_RATE_BURST must be 0 (off) or positive")
+	}
+	if cfg.ClientRateRefill, err = envDuration("CERBERUS_CLIENT_RATE_REFILL", time.Second); err != nil {
+		return Config{}, err
+	}
 	return cfg, nil
 }
 
@@ -118,6 +137,18 @@ func envDuration(name string, def time.Duration) (time.Duration, error) {
 		return 0, fmt.Errorf("config: %s must be positive", name)
 	}
 	return d, nil
+}
+
+func envInt(name string, def int) (int, error) {
+	v := os.Getenv(name)
+	if v == "" {
+		return def, nil
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		return 0, fmt.Errorf("config: %s: %w", name, err)
+	}
+	return n, nil
 }
 
 func envBool(name string, def bool) (bool, error) {
