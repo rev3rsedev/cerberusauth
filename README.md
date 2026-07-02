@@ -173,6 +173,36 @@ check.
 client that implements the full sequence; point it at a running server and
 feed it the wrong `-pubkey` to watch it refuse the response.
 
+### Go SDK
+
+[client/](client/) is the official Go SDK. It runs the verify-then-parse
+sequence above for you and adds clock-skew correction (a signed
+`stale_timestamp` verdict teaches it the server clock and it retries once)
+and offline verification of cached verdicts. Standard library only.
+
+```go
+import "github.com/rev3rsedev/cerberusauth/client"
+
+c, err := client.New("https://auth.example.com", appID, pinnedPublicKey)
+if err != nil {
+    // bad configuration
+}
+
+v, err := c.Redeem(ctx, licenseKey, hwid) // first run; Validate on later startups
+if err != nil {
+    // no trustworthy answer: offline, forged response, replayed nonce.
+    // Fail closed and retry later.
+}
+if !v.Valid {
+    // signed, authoritative denial; v.Reason is one of the client.Reason* constants
+}
+// licensed: v.Tier, v.ExpiresAt (zero time = perpetual)
+```
+
+A signed "no" is a Verdict, not an error; an error means no trustworthy
+answer existed at all. The package docs cover the offline grace-period
+pattern built on `Verdict.Envelope` and `VerifyStored`.
+
 ## HTTP API
 
 ```
@@ -231,9 +261,9 @@ Contributions welcome; read [CONTRIBUTING.md](CONTRIBUTING.md) first.
 
 ## Roadmap
 
-- v0.2: dashboard UI, client SDKs (verify-then-parse reference
-  implementations), global rate limiting (login is already limited), audit
-  log, key rotation, expired-token cleanup job.
+- v0.2: dashboard UI, C# client SDK (the Go SDK ships in
+  [client/](client/)), global rate limiting (login is already limited),
+  audit log, key rotation, expired-token cleanup job.
 - v0.3: per-app end-user accounts, resellers, webhooks.
 
 Not planned: proprietary "pro" tiers, license servers you can't run

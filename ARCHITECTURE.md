@@ -250,7 +250,11 @@ transit readable.
 ## Extension points (deliberately stubbed)
 
 - `TODO(v0.2)`: dashboard UI. Consumes the same admin API; no server changes anticipated.
-- `TODO(v0.2)`: client SDKs (Go/Rust/C#). Verify-then-parse helper + nonce bookkeeping.
+- Go SDK ships in `client/`: verify-then-parse, nonce bookkeeping, skew
+  correction learned from signed `stale_timestamp` verdicts, offline
+  re-verification of cached envelopes. Standard library only, and it must
+  never import `internal/` packages, so it can move to its own module if
+  demand appears. `TODO(v0.2)`: C# SDK next, Rust maybe.
 - `TODO(v0.2)`: global rate limiting middleware (login already has its own per-IP limiter).
 - `TODO(v0.2)`: audit log table; key rotation with overlapping `key_id`s.
 - `TODO(v0.3)`: end-user accounts (KeyAuth-style user/pass per app), resellers, webhooks.

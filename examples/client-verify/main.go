@@ -12,7 +12,9 @@
 // GET /v1/client/apps/{id}/pubkey). Fetching it at runtime over the same
 // connection you distrust would defeat the point.
 //
-// TODO(v0.2): real SDKs grow from this file.
+// The Go SDK (package client, at the repository root) implements this same
+// sequence with skew correction and offline verification on top; this file
+// stays as the minimal spell-it-out reference for SDK authors.
 //
 // Usage:
 //
