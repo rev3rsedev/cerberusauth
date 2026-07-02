@@ -303,7 +303,7 @@ yourself, features that only work against a hosted instance.
       |___/
 ```
 
-Built by [zybu](https://github.com/rev3rsedev) — rev3rsedev.
+Built by [zybu](https://github.com/rev3rsedev).
 
 ## License
 
