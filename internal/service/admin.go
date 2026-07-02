@@ -40,6 +40,9 @@ func (s *Service) CreateApplication(ctx context.Context, name string) (store.App
 	if err := s.store.CreateApplication(ctx, app); err != nil {
 		return store.Application{}, err
 	}
+	if err := s.audit(ctx, AuditAppCreate, app.ID.String(), name); err != nil {
+		return store.Application{}, err
+	}
 	return app, nil
 }
 
@@ -120,6 +123,9 @@ func (s *Service) IssueLicenses(ctx context.Context, appID uuid.UUID, count int,
 	if err := s.store.CreateLicenses(ctx, rows); err != nil {
 		return nil, err
 	}
+	if err := s.audit(ctx, AuditLicenseIssue, appID.String(), fmt.Sprintf("%d x %s", count, tier)); err != nil {
+		return nil, err
+	}
 	return issued, nil
 }
 
@@ -163,6 +169,9 @@ func (s *Service) BanLicense(ctx context.Context, id uuid.UUID, reason string) (
 	if err := s.store.SetLicenseStatus(ctx, id, store.StatusBanned, reasonPtr); err != nil {
 		return store.License{}, err
 	}
+	if err := s.audit(ctx, AuditLicenseBan, id.String(), reason); err != nil {
+		return store.License{}, err
+	}
 	return s.GetLicense(ctx, id)
 }
 
@@ -184,6 +193,9 @@ func (s *Service) UnbanLicense(ctx context.Context, id uuid.UUID) (store.License
 	if err := s.store.SetLicenseStatus(ctx, id, target, nil); err != nil {
 		return store.License{}, err
 	}
+	if err := s.audit(ctx, AuditLicenseUnban, id.String(), ""); err != nil {
+		return store.License{}, err
+	}
 	return s.GetLicense(ctx, id)
 }
 
@@ -194,6 +206,9 @@ func (s *Service) ResetHWID(ctx context.Context, id uuid.UUID) (store.License, e
 		return store.License{}, err
 	}
 	if err := s.store.ResetHWID(ctx, id); err != nil {
+		return store.License{}, err
+	}
+	if err := s.audit(ctx, AuditLicenseResetHWID, id.String(), ""); err != nil {
 		return store.License{}, err
 	}
 	return s.GetLicense(ctx, id)
@@ -228,6 +243,9 @@ func (s *Service) CreateAdminUser(ctx context.Context, email, password string) (
 	if err := s.store.CreateAdminUser(ctx, u); err != nil {
 		return store.AdminUser{}, err
 	}
+	if err := s.audit(ctx, AuditAdminCreate, u.ID.String(), ""); err != nil {
+		return store.AdminUser{}, err
+	}
 	return u, nil
 }
 
@@ -239,12 +257,18 @@ func (s *Service) Login(ctx context.Context, email, password string) (string, ti
 	u, err := s.store.GetAdminUserByEmailHash(ctx, auth.HashEmail(s.emailPepper, email))
 	if errors.Is(err, store.ErrNotFound) {
 		auth.FakeVerify(password)
+		if aerr := s.auditAs(ctx, nil, AuditLoginFailed, "", ""); aerr != nil {
+			return "", time.Time{}, aerr
+		}
 		return "", time.Time{}, ErrInvalidCredentials
 	}
 	if err != nil {
 		return "", time.Time{}, err
 	}
 	if !auth.VerifyPassword(password, u.PasswordHash) {
+		if aerr := s.auditAs(ctx, nil, AuditLoginFailed, "", ""); aerr != nil {
+			return "", time.Time{}, aerr
+		}
 		return "", time.Time{}, ErrInvalidCredentials
 	}
 	token, err := auth.NewToken()
@@ -262,6 +286,9 @@ func (s *Service) Login(ctx context.Context, email, password string) (string, ti
 	if err := s.store.CreateAdminToken(ctx, t); err != nil {
 		return "", time.Time{}, err
 	}
+	if err := s.auditAs(ctx, &u.ID, AuditLogin, "", ""); err != nil {
+		return "", time.Time{}, err
+	}
 	return token, expiresAt, nil
 }
 
@@ -269,7 +296,10 @@ func (s *Service) Login(ctx context.Context, email, password string) (string, ti
 // already gone succeeds: the caller's goal (token no longer works) is met
 // either way.
 func (s *Service) Logout(ctx context.Context, token string) error {
-	return s.store.DeleteAdminToken(ctx, auth.HashToken(token))
+	if err := s.store.DeleteAdminToken(ctx, auth.HashToken(token)); err != nil {
+		return err
+	}
+	return s.audit(ctx, AuditLogout, "", "")
 }
 
 // AuthenticateToken resolves a bearer token to the admin who owns it.

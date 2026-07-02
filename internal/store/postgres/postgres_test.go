@@ -33,7 +33,7 @@ func TestStoreIntegration(t *testing.T) {
 	if _, err := postgres.Migrate(ctx, pool); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
-	if _, err := pool.Exec(ctx, "TRUNCATE applications, licenses, admin_users, admin_tokens CASCADE"); err != nil {
+	if _, err := pool.Exec(ctx, "TRUNCATE applications, licenses, admin_users, admin_tokens, audit_log CASCADE"); err != nil {
 		t.Fatalf("truncate: %v", err)
 	}
 
@@ -193,6 +193,42 @@ func TestStoreIntegration(t *testing.T) {
 		// Idempotent.
 		if err := s.DeleteAdminToken(ctx, valid.TokenHash); err != nil {
 			t.Fatalf("second delete: %v", err)
+		}
+	})
+
+	t.Run("audit log", func(t *testing.T) {
+		actor := uuid.New()
+		first := store.AuditEntry{At: now, Action: "license.ban", TargetID: uuid.NewString(), Detail: "chargeback"}
+		second := store.AuditEntry{At: now.Add(time.Second), AdminID: &actor, Action: "license.unban"}
+		for _, e := range []store.AuditEntry{first, second} {
+			if err := s.AppendAudit(ctx, e); err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		entries, err := s.ListAudit(ctx, 10, 0)
+		if err != nil || len(entries) != 2 {
+			t.Fatalf("list: %v, len %d", err, len(entries))
+		}
+		// Newest first.
+		if entries[0].Action != "license.unban" || entries[1].Action != "license.ban" {
+			t.Fatalf("order wrong: %+v", entries)
+		}
+		if entries[0].AdminID == nil || *entries[0].AdminID != actor {
+			t.Errorf("actor lost: %+v", entries[0])
+		}
+		if entries[1].AdminID != nil {
+			t.Errorf("nil actor not preserved: %+v", entries[1])
+		}
+		if entries[1].TargetID != first.TargetID || entries[1].Detail != "chargeback" {
+			t.Errorf("fields lost: %+v", entries[1])
+		}
+		if !entries[1].At.Equal(first.At) {
+			t.Errorf("timestamp mismatch: %v vs %v", entries[1].At, first.At)
+		}
+
+		if page, err := s.ListAudit(ctx, 1, 1); err != nil || len(page) != 1 || page[0].Action != "license.ban" {
+			t.Fatalf("pagination: %v, %+v", err, page)
 		}
 	})
 }

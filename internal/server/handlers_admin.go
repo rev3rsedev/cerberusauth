@@ -243,6 +243,38 @@ func (s *Server) handleResetHWID(w http.ResponseWriter, r *http.Request) {
 	s.licenseAction(w, r, s.svc.ResetHWID)
 }
 
+// --- audit ---
+
+func (s *Server) handleListAudit(w http.ResponseWriter, r *http.Request) {
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+
+	entries, err := s.svc.ListAudit(r.Context(), limit, offset)
+	if err != nil {
+		s.writeServiceError(w, r, err)
+		return
+	}
+
+	type auditJSON struct {
+		ID       int64     `json:"id"`
+		At       time.Time `json:"at"`
+		AdminID  *string   `json:"admin_id,omitempty"`
+		Action   string    `json:"action"`
+		TargetID string    `json:"target_id,omitempty"`
+		Detail   string    `json:"detail,omitempty"`
+	}
+	out := make([]auditJSON, 0, len(entries))
+	for _, e := range entries {
+		j := auditJSON{ID: e.ID, At: e.At, Action: e.Action, TargetID: e.TargetID, Detail: e.Detail}
+		if e.AdminID != nil {
+			id := e.AdminID.String()
+			j.AdminID = &id
+		}
+		out = append(out, j)
+	}
+	s.writeJSON(w, http.StatusOK, map[string]any{"entries": out})
+}
+
 // licenseAction factors the shared shape of {id}-scoped license operations.
 func (s *Server) licenseAction(w http.ResponseWriter, r *http.Request, fn func(context.Context, uuid.UUID) (store.License, error)) {
 	id, err := uuid.Parse(r.PathValue("id"))

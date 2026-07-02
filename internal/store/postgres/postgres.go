@@ -253,6 +253,40 @@ func (s *Store) GetAdminTokenByHash(ctx context.Context, tokenHash []byte) (stor
 	return t, nil
 }
 
+// --- audit log ---
+
+func (s *Store) AppendAudit(ctx context.Context, e store.AuditEntry) error {
+	_, err := s.pool.Exec(ctx, `
+		INSERT INTO audit_log (at, admin_id, action, target_id, detail)
+		VALUES ($1, $2, $3, $4, $5)`,
+		e.At, e.AdminID, e.Action, e.TargetID, e.Detail)
+	if err != nil {
+		return fmt.Errorf("postgres: append audit: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) ListAudit(ctx context.Context, limit, offset int) ([]store.AuditEntry, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, at, admin_id, action, target_id, detail
+		FROM audit_log ORDER BY at DESC, id DESC LIMIT $1 OFFSET $2`,
+		limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("postgres: list audit: %w", err)
+	}
+	defer rows.Close()
+
+	entries := []store.AuditEntry{}
+	for rows.Next() {
+		var e store.AuditEntry
+		if err := rows.Scan(&e.ID, &e.At, &e.AdminID, &e.Action, &e.TargetID, &e.Detail); err != nil {
+			return nil, fmt.Errorf("postgres: scan audit: %w", err)
+		}
+		entries = append(entries, e)
+	}
+	return entries, rows.Err()
+}
+
 // DeleteAdminToken also sweeps already-expired tokens in the same statement:
 // logouts are rare enough that the extra work is free, and it keeps the
 // table from growing until the real cleanup job exists (TODO(v0.2), the

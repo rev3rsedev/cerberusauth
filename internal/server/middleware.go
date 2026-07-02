@@ -48,7 +48,9 @@ func (r *statusRecorder) WriteHeader(code int) {
 	r.ResponseWriter.WriteHeader(code)
 }
 
-// requireAdmin gates a handler behind a valid admin bearer token.
+// requireAdmin gates a handler behind a valid admin bearer token and puts
+// the authenticated admin on the context, so audit entries written further
+// down carry who did it.
 func (s *Server) requireAdmin(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
@@ -56,7 +58,8 @@ func (s *Server) requireAdmin(next http.HandlerFunc) http.HandlerFunc {
 			s.writeError(w, http.StatusUnauthorized, "missing bearer token")
 			return
 		}
-		if _, err := s.svc.AuthenticateToken(r.Context(), token); err != nil {
+		adminID, err := s.svc.AuthenticateToken(r.Context(), token)
+		if err != nil {
 			if errors.Is(err, service.ErrInvalidToken) {
 				s.writeError(w, http.StatusUnauthorized, "invalid or expired token")
 				return
@@ -64,6 +67,6 @@ func (s *Server) requireAdmin(next http.HandlerFunc) http.HandlerFunc {
 			s.writeServiceError(w, r, err)
 			return
 		}
-		next(w, r)
+		next(w, r.WithContext(service.WithActor(r.Context(), adminID)))
 	}
 }

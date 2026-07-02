@@ -71,6 +71,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /v1/admin/licenses/{id}/ban", s.requireAdmin(s.handleBanLicense))
 	s.mux.HandleFunc("POST /v1/admin/licenses/{id}/unban", s.requireAdmin(s.handleUnbanLicense))
 	s.mux.HandleFunc("POST /v1/admin/licenses/{id}/reset-hwid", s.requireAdmin(s.handleResetHWID))
+	s.mux.HandleFunc("GET /v1/admin/audit", s.requireAdmin(s.handleListAudit))
 }
 
 // Handler returns the fully wrapped root handler.

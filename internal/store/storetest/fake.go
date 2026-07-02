@@ -22,6 +22,7 @@ type FakeStore struct {
 	licenses map[uuid.UUID]store.License
 	admins   map[uuid.UUID]store.AdminUser
 	tokens   map[uuid.UUID]store.AdminToken
+	audit    []store.AuditEntry
 }
 
 var _ store.Store = (*FakeStore)(nil)
@@ -210,6 +211,32 @@ func (f *FakeStore) GetAdminTokenByHash(_ context.Context, tokenHash []byte) (st
 		}
 	}
 	return store.AdminToken{}, store.ErrNotFound
+}
+
+func (f *FakeStore) AppendAudit(_ context.Context, e store.AuditEntry) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e.ID = int64(len(f.audit) + 1)
+	f.audit = append(f.audit, e)
+	return nil
+}
+
+func (f *FakeStore) ListAudit(_ context.Context, limit, offset int) ([]store.AuditEntry, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	// Newest first, like the SQL ORDER BY at DESC, id DESC.
+	out := make([]store.AuditEntry, 0, len(f.audit))
+	for i := len(f.audit) - 1; i >= 0; i-- {
+		out = append(out, f.audit[i])
+	}
+	if offset >= len(out) {
+		return []store.AuditEntry{}, nil
+	}
+	out = out[offset:]
+	if limit < len(out) {
+		out = out[:limit]
+	}
+	return out, nil
 }
 
 // DeleteAdminToken removes by hash only. The postgres implementation also

@@ -70,6 +70,25 @@ type AdminToken struct {
 	CreatedAt time.Time
 }
 
+// AuditEntry is one recorded admin action. The log is append-only: there
+// is no update or delete path anywhere, by design.
+type AuditEntry struct {
+	ID int64
+	At time.Time
+	// AdminID is the acting admin; nil for events without an authenticated
+	// actor (failed logins, bootstrap provisioning).
+	AdminID *uuid.UUID
+	// Action is a stable dotted name like "license.ban"; see the service
+	// Audit* constants.
+	Action string
+	// TargetID is the acted-on entity's UUID as text; empty when the action
+	// has no single target.
+	TargetID string
+	// Detail is short human-readable context. Never secrets, never
+	// plaintext license keys, never emails.
+	Detail string
+}
+
 // Store is the persistence boundary. Mutations that enforce a state
 // transition (RedeemLicense, BindHWID) return false instead of writing when
 // the precondition no longer holds, so concurrent requests cannot both win.
@@ -102,4 +121,10 @@ type Store interface {
 	// DeleteAdminToken revokes a token by its hash. Deleting a token that
 	// does not exist is not an error; revocation is idempotent.
 	DeleteAdminToken(ctx context.Context, tokenHash []byte) error
+
+	// AppendAudit records one admin action. ID and At are assigned by the
+	// caller-facing service, not the store.
+	AppendAudit(ctx context.Context, e AuditEntry) error
+	// ListAudit returns entries newest-first.
+	ListAudit(ctx context.Context, limit, offset int) ([]AuditEntry, error)
 }
