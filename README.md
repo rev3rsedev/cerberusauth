@@ -1,31 +1,79 @@
-# CerberusAuth
+<div align="center">
+
+<pre>
+               _                                     _   _
+  ___ ___ _ __| |__   ___ _ __ _   _ ___  __ _ _   _| |_| |__
+ / __/ _ \ '__| '_ \ / _ \ '__| | | / __|/ _` | | | | __| '_ \
+| (_|  __/ |  | |_) |  __/ |  | |_| \__ \ (_| | |_| | |_| | | |
+ \___\___|_|  |_.__/ \___|_|   \__,_|___/\__,_|\__,_|\__|_| |_|
+</pre>
+
+**Self-hosted license keys and auth for the software you sell.**
+
+*The open, trustworthy one.*
 
 [![CI](https://github.com/rev3rsedev/cerberusauth/actions/workflows/ci.yml/badge.svg)](https://github.com/rev3rsedev/cerberusauth/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Go ≥1.25](https://img.shields.io/badge/go-%E2%89%A51.25-00ADD8.svg)](go.mod)
 
-**The open, trustworthy one.**
+[Quickstart](#quickstart) ·
+[How it works](#how-it-works) ·
+[Threat model](#what-this-protects-against-and-what-it-doesnt) ·
+[HTTP API](#http-api) ·
+[Roadmap](#roadmap)
 
-Self-hostable authentication and software licensing, built as an open
-alternative to KeyAuth. Apache-2.0, no paid tiers, no gated features, no
-phone-home. There is no hosted version to depend on; you run the server.
+</div>
 
-What it does:
+## What is this
 
-- Every license validation response is signed with a per-application
-  Ed25519 key. Your client verifies the signature against a pinned public
-  key, so a "valid" (or "banned") answer holds up even on a hostile
-  network. Failure responses are signed as well.
-- Requests carry a client nonce and timestamp, and both are echoed inside
-  the signed payload. A captured response can't be replayed later because
+You ship software people pay for: a game tool, a trading bot, a desktop
+app, a plugin. CerberusAuth is the server that manages its license keys.
+It issues keys, binds them to hardware on first use, expires them on
+schedule, bans them on chargeback, and answers your app's "is this key
+valid?" call at startup with a response that can't be faked on the
+network.
+
+It's built as an open alternative to KeyAuth: Apache-2.0, one Go binary
+plus PostgreSQL, and self-hosting is the only mode. No paid tiers, no
+gated features, no phone-home.
+
+## How it works
+
+The classic crack for a license check never touches your server: point
+the hostname at a local box that answers "valid" to everything. That is
+the attack this design starts from. Every response is signed with a
+per-application Ed25519 key, and your client verifies it against a public
+key pinned at build time, so a spoofed server's answers are rejected
+before they are even parsed.
+
+```mermaid
+sequenceDiagram
+    participant App as Your app (pinned pubkey)
+    participant S as cerberusd
+    App->>S: POST /v1/client/validate<br/>{app_id, license_key, hwid, nonce, timestamp}
+    S->>S: look up SHA-256(key), check status / expiry / HWID
+    S->>S: sign the verdict with the app's Ed25519 key
+    S-->>App: {payload: base64, signature: base64}
+    App->>App: 1. verify signature over the raw payload bytes
+    App->>App: 2. parse JSON, check the nonce echo
+    App->>App: 3. only now trust the verdict
+```
+
+The properties that fall out of this:
+
+- Signed verdicts. A "valid" (or "banned") answer holds up even on a
+  hostile network. Failure responses are signed too, so a denial can't be
+  spoofed any more than an approval.
+- Replay-proof. Requests carry a client nonce and timestamp, both echoed
+  inside the signed payload. A captured response is useless later because
   the nonce won't match.
-- License keys, admin tokens, and HWIDs are stored as hashes. Admin emails
-  are peppered HMACs, passwords are argon2id. Per-app signing keys are
-  AES-256-GCM-encrypted under a master key that lives only in your
-  environment.
-- Operationally it's one Go binary and one PostgreSQL database. Config is
-  environment variables, migrations are embedded, and `docker compose up`
-  gives you a running instance.
+- Hashed at rest. License keys, admin tokens, and HWIDs are stored as
+  hashes. Admin emails are peppered HMACs, passwords are argon2id.
+  Per-app signing keys are AES-256-GCM-encrypted under a master key that
+  lives only in your environment, so a database dump alone forges
+  nothing.
+- Simple to operate. One Go binary, one PostgreSQL, config via env vars,
+  migrations embedded. `docker compose up` gives you a running instance.
 
 ## What this protects against (and what it doesn't)
 
@@ -122,6 +170,33 @@ equals the one it just sent, and checks `valid`. In that order.
 `POST /v1/client/validate` is the same shape for every subsequent startup
 check.
 
+[examples/client-verify](examples/client-verify/main.go) is a reference
+client that implements the full sequence; point it at a running server and
+feed it the wrong `-pubkey` to watch it refuse the response.
+
+## HTTP API
+
+```
+POST   /v1/client/redeem                  activate a key, bind the HWID
+POST   /v1/client/validate                startup check (signed verdict)
+GET    /v1/client/apps/{id}/pubkey        convenience; pin the key at build time instead
+GET    /healthz
+
+POST   /v1/admin/login                    email + password -> bearer token
+DELETE /v1/admin/token                    revoke the presented token
+POST   /v1/admin/apps                     create app (returns its public key)
+GET    /v1/admin/apps[/{id}]
+POST   /v1/admin/apps/{id}/licenses       batch-issue; plaintext keys returned once
+GET    /v1/admin/apps/{id}/licenses       paginated list (key hints only)
+GET    /v1/admin/licenses/{id}
+POST   /v1/admin/licenses/{id}/ban        also unban, reset-hwid
+```
+
+Verdicts about a license are always HTTP 200 with a signed payload.
+Unsigned errors (400/404/500) concern the request itself and must never be
+read as a license verdict. Full protocol details, the decision log, and the
+threat model live in [ARCHITECTURE.md](ARCHITECTURE.md).
+
 ## Configuration
 
 Everything is an environment variable. See [.env.example](.env.example) for
@@ -139,11 +214,7 @@ make run       # needs CERBERUS_DATABASE_URL + CERBERUS_MASTER_KEY
 make migrate
 ```
 
-Design and protocol details live in [ARCHITECTURE.md](ARCHITECTURE.md).
-
-## Testing
-
-Three layers, cheapest first:
+Tests come in three layers, cheapest first:
 
 1. Unit tests: `make test` (or `go test ./...`). No database, no network;
    the service and HTTP layers run against an in-memory store fake. Covers
@@ -151,27 +222,13 @@ Three layers, cheapest first:
    generation and canonicalization, argon2id, the full license state
    machine, replay/skew handling, and an end-to-end HTTP test that drives
    every endpoint and verifies real signatures.
+2. Store integration: `go test ./internal/store/postgres/` with
+   `CERBERUS_TEST_DATABASE_URL` pointed at a disposable database. CI runs
+   this against a real Postgres.
+3. Live smoke test: `docker compose up --build`, then walk the
+   [five-minute tour](#five-minute-tour) with curl.
 
-2. Live smoke test: boot the real thing (`docker compose up --build`, or
-   any Postgres + `make run`) and walk the
-   [five-minute tour](#five-minute-tour) above with curl.
-
-3. Client-side verification: [examples/client-verify](examples/client-verify/main.go)
-   is a reference client. It sends a validation request, verifies the
-   Ed25519 signature over the raw payload bytes, and checks the nonce
-   echo, which is the exact sequence every real client must implement.
-   Point it at a running server:
-
-   ```sh
-   go run ./examples/client-verify \
-     -app    <app uuid> \
-     -pubkey <base64 public key from app creation> \
-     -key    XXXXX-XXXXX-XXXXX-XXXXX-XXXXX \
-     -hwid   my-device-1 \
-     -redeem   # first run only; drop for subsequent validations
-   ```
-
-   Feed it the wrong `-pubkey` and it refuses the response.
+Contributions welcome; read [CONTRIBUTING.md](CONTRIBUTING.md) first.
 
 ## Roadmap
 
