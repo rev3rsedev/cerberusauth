@@ -414,6 +414,22 @@ func (s *Store) ListAudit(ctx context.Context, limit, offset int) ([]store.Audit
 	return entries, rows.Err()
 }
 
+func (s *Store) Stats(ctx context.Context, now time.Time) (store.Stats, error) {
+	var st store.Stats
+	err := s.pool.QueryRow(ctx, `
+		SELECT
+			(SELECT COUNT(*) FROM applications),
+			(SELECT COUNT(*) FROM licenses),
+			(SELECT COUNT(*) FROM licenses
+				WHERE status = 'active' AND (expires_at IS NULL OR expires_at > $1)),
+			(SELECT COUNT(*) FROM licenses WHERE status = 'banned')`,
+		now).Scan(&st.Applications, &st.Licenses, &st.ActiveLicenses, &st.BannedLicenses)
+	if err != nil {
+		return store.Stats{}, fmt.Errorf("postgres: stats: %w", err)
+	}
+	return st, nil
+}
+
 // DeleteAdminToken also sweeps already-expired tokens in the same statement:
 // logouts are rare enough that the extra work is free, and it keeps the
 // table from growing until the real cleanup job exists (TODO(v0.2), the

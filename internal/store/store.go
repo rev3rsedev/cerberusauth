@@ -101,6 +101,15 @@ type AuditEntry struct {
 	Detail string
 }
 
+// Stats are the aggregate counts behind the dashboard overview. Active
+// means redeemed, not banned, and not past expiry at the asked instant.
+type Stats struct {
+	Applications   int64
+	Licenses       int64
+	ActiveLicenses int64
+	BannedLicenses int64
+}
+
 // Store is the persistence boundary. Mutations that enforce a state
 // transition (RedeemLicense, BindHWID) return false instead of writing when
 // the precondition no longer holds, so concurrent requests cannot both win.
@@ -155,4 +164,7 @@ type Store interface {
 	AppendAudit(ctx context.Context, e AuditEntry) error
 	// ListAudit returns entries newest-first.
 	ListAudit(ctx context.Context, limit, offset int) ([]AuditEntry, error)
+
+	// Stats counts apps and licenses; now anchors the expiry comparison.
+	Stats(ctx context.Context, now time.Time) (Stats, error)
 }

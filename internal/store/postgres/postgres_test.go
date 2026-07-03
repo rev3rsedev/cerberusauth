@@ -294,6 +294,36 @@ func TestStoreIntegration(t *testing.T) {
 			t.Fatalf("pagination: %v, %+v", err, page)
 		}
 	})
+
+	t.Run("stats", func(t *testing.T) {
+		// State so far: one app, one active license expiring at now+1h.
+		st, err := s.Stats(ctx, now)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if st.Applications != 1 || st.Licenses != 1 || st.ActiveLicenses != 1 || st.BannedLicenses != 0 {
+			t.Fatalf("baseline: %+v", st)
+		}
+
+		// A banned license and an active-but-expired one must both stay
+		// out of the active count.
+		past := now.Add(-time.Minute)
+		reason := "abuse"
+		extra := []store.License{
+			{ID: uuid.New(), AppID: app.ID, KeyHash: randBytes(t, 32), KeyHint: "FGHIJ", Tier: "pro", Status: store.StatusBanned, BanReason: &reason, CreatedAt: now, UpdatedAt: now},
+			{ID: uuid.New(), AppID: app.ID, KeyHash: randBytes(t, 32), KeyHint: "KLMNO", Tier: "pro", Status: store.StatusActive, ExpiresAt: &past, CreatedAt: now, UpdatedAt: now},
+		}
+		if err := s.CreateLicenses(ctx, extra); err != nil {
+			t.Fatal(err)
+		}
+		st, err = s.Stats(ctx, now)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if st.Licenses != 3 || st.ActiveLicenses != 1 || st.BannedLicenses != 1 {
+			t.Fatalf("after extras: %+v", st)
+		}
+	})
 }
 
 func randBytes(t *testing.T, n int) []byte {

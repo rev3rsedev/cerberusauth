@@ -75,3 +75,8 @@ func (s *Service) ListAudit(ctx context.Context, limit, offset int) ([]store.Aud
 	}
 	return s.store.ListAudit(ctx, limit, offset)
 }
+
+// Stats returns the aggregate counts shown on the dashboard overview.
+func (s *Service) Stats(ctx context.Context) (store.Stats, error) {
+	return s.store.Stats(ctx, s.now())
+}

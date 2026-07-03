@@ -340,6 +340,22 @@ func (s *Server) handleListAudit(w http.ResponseWriter, r *http.Request) {
 	s.writeJSON(w, http.StatusOK, map[string]any{"entries": out})
 }
 
+// --- stats ---
+
+func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
+	st, err := s.svc.Stats(r.Context())
+	if err != nil {
+		s.writeServiceError(w, r, err)
+		return
+	}
+	s.writeJSON(w, http.StatusOK, map[string]any{
+		"applications":    st.Applications,
+		"licenses":        st.Licenses,
+		"active_licenses": st.ActiveLicenses,
+		"banned_licenses": st.BannedLicenses,
+	})
+}
+
 // licenseAction factors the shared shape of {id}-scoped license operations.
 func (s *Server) licenseAction(w http.ResponseWriter, r *http.Request, fn func(context.Context, uuid.UUID) (store.License, error)) {
 	id, err := uuid.Parse(r.PathValue("id"))

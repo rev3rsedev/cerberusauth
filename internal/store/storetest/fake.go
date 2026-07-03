@@ -326,6 +326,26 @@ func (f *FakeStore) ListAudit(_ context.Context, limit, offset int) ([]store.Aud
 	return out, nil
 }
 
+func (f *FakeStore) Stats(_ context.Context, now time.Time) (store.Stats, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	st := store.Stats{
+		Applications: int64(len(f.apps)),
+		Licenses:     int64(len(f.licenses)),
+	}
+	for _, l := range f.licenses {
+		switch l.Status {
+		case store.StatusActive:
+			if l.ExpiresAt == nil || l.ExpiresAt.After(now) {
+				st.ActiveLicenses++
+			}
+		case store.StatusBanned:
+			st.BannedLicenses++
+		}
+	}
+	return st, nil
+}
+
 // DeleteAdminToken removes by hash only. The postgres implementation also
 // sweeps expired rows opportunistically; that is a storage housekeeping
 // detail, not semantics worth faking.

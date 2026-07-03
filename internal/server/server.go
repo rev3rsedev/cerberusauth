@@ -92,6 +92,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /v1/admin/licenses/{id}/unban", s.requireAdmin(s.handleUnbanLicense))
 	s.mux.HandleFunc("POST /v1/admin/licenses/{id}/reset-hwid", s.requireAdmin(s.handleResetHWID))
 	s.mux.HandleFunc("GET /v1/admin/audit", s.requireAdmin(s.handleListAudit))
+	s.mux.HandleFunc("GET /v1/admin/stats", s.requireAdmin(s.handleStats))
 
 	// Dashboard: explicit GET routes only, so nothing under /v1 can ever
 	// fall through to a static file or vice versa.

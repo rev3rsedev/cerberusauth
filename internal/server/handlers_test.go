@@ -92,6 +92,9 @@ func TestAdminEndpointsRequireToken(t *testing.T) {
 	if rr := e.do(t, "POST", "/v1/admin/apps", map[string]string{"name": "x"}, "cba_garbage"); rr.Code != http.StatusUnauthorized {
 		t.Fatalf("garbage token: %d", rr.Code)
 	}
+	if rr := e.do(t, "GET", "/v1/admin/stats", nil, ""); rr.Code != http.StatusUnauthorized {
+		t.Fatalf("stats without token: %d", rr.Code)
+	}
 }
 
 func TestClientRequestValidation(t *testing.T) {
@@ -268,6 +271,21 @@ func TestFullLifecycleOverHTTP(t *testing.T) {
 	}
 	if p := verify(e.do(t, "POST", "/v1/client/validate", e.clientBody(app.ID, key, "device-1"), "")); p.Valid || p.Reason != service.ReasonBanned {
 		t.Fatalf("banned validate: %+v", p)
+	}
+
+	// Stats reflect the current state: one app, one license, banned.
+	rr = e.do(t, "GET", "/v1/admin/stats", nil, login.Token)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("stats: %d %s", rr.Code, rr.Body.String())
+	}
+	stats := decode[struct {
+		Applications   int64 `json:"applications"`
+		Licenses       int64 `json:"licenses"`
+		ActiveLicenses int64 `json:"active_licenses"`
+		BannedLicenses int64 `json:"banned_licenses"`
+	}](t, rr)
+	if stats.Applications != 1 || stats.Licenses != 1 || stats.ActiveLicenses != 0 || stats.BannedLicenses != 1 {
+		t.Fatalf("stats: %+v", stats)
 	}
 
 	// Unban → valid again.
