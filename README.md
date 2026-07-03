@@ -246,6 +246,7 @@ GET    /v1/admin/apps/{id}/licenses       paginated list (key hints only)
 GET    /v1/admin/licenses/{id}
 POST   /v1/admin/licenses/{id}/ban        also unban, reset-hwid
 GET    /v1/admin/audit                    append-only audit trail, newest first
+GET    /v1/admin/stats                    aggregate counts for the dashboard
 ```
 
 Verdicts about a license are always HTTP 200 with a signed payload.
