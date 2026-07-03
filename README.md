@@ -12,6 +12,7 @@
 [Quickstart](#quickstart) ·
 [How it works](#how-it-works) ·
 [Threat model](#what-this-protects-against-and-what-it-doesnt) ·
+[Break it](#break-it) ·
 [HTTP API](#http-api) ·
 [Roadmap](#roadmap)
 
@@ -111,6 +112,23 @@ Does NOT protect against:
 - Eavesdropping. Signatures give integrity, not confidentiality. Run TLS
   (terminate at your proxy) or license keys and HWIDs cross the wire
   readable.
+
+## Break it
+
+This is a security product, so the most useful contribution is an attack.
+Forge a signed verdict, bypass the admin API, get a banned or foreign
+license to validate, leak key material, find a timing oracle. If you
+reverse license checks for sport, the protocol and the crypto are the
+interesting target, and I would genuinely like to be proven wrong.
+
+The one thing that does not count is patching your own client binary to
+skip its check. That is a documented non-goal, not a finding: no
+licensing server can stop it, and the section above says so plainly.
+
+Scope, what to expect, and private reporting are in
+[SECURITY.md](SECURITY.md). Report through the repository's Security tab,
+never a public issue; fixed reports become published advisories with
+credit to you.
 
 ## Quickstart
 
