@@ -8,16 +8,42 @@
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <header id="topbar" hidden>
-    <div class="brand">Cerberus<span>Auth</span></div>
+<div id="shell">
+  <aside id="sidebar" hidden>
+    <div class="brand">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round">
+        <path d="M12 2.5l8 3.6v5.6c0 4.8-3.3 8.1-8 9.8-4.7-1.7-8-5-8-9.8V6.1z"/>
+        <circle cx="8.3" cy="10.4" r="1.15" fill="currentColor" stroke="none"/>
+        <circle cx="12" cy="10.4" r="1.15" fill="currentColor" stroke="none"/>
+        <circle cx="15.7" cy="10.4" r="1.15" fill="currentColor" stroke="none"/>
+        <path d="M9 14.6c.9.7 1.9 1 3 1s2.1-.3 3-1" stroke-linecap="round"/>
+      </svg>
+      <span class="brand-name">Cerberus<b>Auth</b></span>
+    </div>
     <nav>
-      <a href="#/apps" data-nav="apps">Applications</a>
-      <a href="#/audit" data-nav="audit">Audit log</a>
+      <a href="#/overview" data-nav="overview">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></svg>
+        Overview
+      </a>
+      <a href="#/apps" data-nav="apps">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8.2l-9-4.7-9 4.7v7.6l9 4.7 9-4.7z"/><path d="M3 8.2l9 4.7 9-4.7M12 12.9v7.6"/></svg>
+        Applications
+      </a>
+      <a href="#/audit" data-nav="audit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        Audit log
+      </a>
     </nav>
-    <button id="logout" class="ghost">Log out</button>
-  </header>
-  <main id="view"></main>
-  <div id="toast" hidden></div>
-  <script src="/app.js"></script>
+    <div class="side-foot">
+      <button id="logout" class="btn ghost">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H6a2 2 0 01-2-2V5a2 2 0 012-2h3"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>
+        Log out
+      </button>
+    </div>
+  </aside>
+  <main id="main"><div id="view"></div></main>
+</div>
+<div id="toast" hidden></div>
+<script src="/app.js"></script>
 </body>
 </html>
