@@ -47,8 +47,9 @@ Commitments:
 
 - Patched or modified client binaries skipping their own license checks.
   No licensing server can prevent that.
-- Denial of service by volume in v0.1. Admin login is rate-limited;
-  everything else is documented as "front with a reverse proxy".
+- Denial of service by volume. Admin login and the client endpoints are
+  rate-limited per IP; a determined flood is documented as "front with a
+  reverse proxy".
 - Deployments running the published dev master key with
   `CERBERUS_DEV_MODE=true`. The tripwire exists so this cannot happen
   silently; a sandbox that opts in is out of scope.
@@ -57,4 +58,4 @@ Commitments:
 
 ## Supported versions
 
-Pre-1.0: only the latest release gets fixes. There are no backports.
+Only the latest release gets fixes. There are no backports.
