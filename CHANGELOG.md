@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.1.0 - 2026-07-03
+
+Added:
+
+- Dashboard: redesigned around a sidebar layout, with a new overview
+  page (stat cards, recent applications, recent activity), application
+  cards, credential panels with one-click copy, and denser tables.
+  Same three embedded static files, no build step, no external
+  requests.
+- `GET /v1/admin/stats`: aggregate counts (applications, licenses,
+  active, banned) behind admin auth; feeds the overview page.
+
+No schema changes; upgrading is a binary swap.
+
 ## v1.0.1 - 2026-07-02
 
 - Build with Go 1.26.4 (`toolchain` directive in go.mod). The v1.0.0
