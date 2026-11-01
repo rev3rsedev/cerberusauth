@@ -320,19 +320,18 @@ yourself, features that only work against a hosted instance.
 ## Credits
 
 ```text
-             _
- ____ _   _ | |__   _   _
-|_  /| | | || '_ \ | | | |
- / / | |_| || |_) || |_| |
-/___| \__, ||_.__/  \__,_|
-      |___/
+                                  _ _______________
+ _ __ _____   _____ _ __ ___  ___/ |___ /___ /___  |
+| '__/ _ \ \ / / _ \ '__/ __|/ _ \ | |_ \ |_ \  / /
+| | |  __/\ V /  __/ |  \__ \  __/ |___) |__) |/ /
+|_|  \___| \_/ \___|_|  |___/\___|_|____/____//_/
 ```
 
-Built by [zybu](https://github.com/rev3rsedev).
+Built by [reverse1337](https://github.com/rev3rsedev).
 
 ## License
 
-[Elastic License 2.0](LICENSE). Copyright (C) 2026 zybu.
+[Elastic License 2.0](LICENSE). Copyright (C) 2026 reverse1337.
 
 What that means in practice:
 
